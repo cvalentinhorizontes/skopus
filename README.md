@@ -34,19 +34,29 @@ cd my-project && skopus link   # wire the current project to your charter + vaul
 skopus doctor                  # health check all four lenses
 ```
 
-## What ships at v0.0.2 (alpha)
+## What ships at v0.0.3 (alpha)
 
 - ✅ **Charter templates** — high-level `CLAUDE.md`, full `workflow_partnership.md`, `user_profile.md`
 - ✅ **Memory scaffold** — `MEMORY.md` index, feedback/project templates, 6 seed profiles
 - ✅ **Vault scaffold** — Karpathy `raw/wiki/output` layout with `/ingest`, `/compile`, `/query`, `/lint`, `/wiki` slash commands
 - ✅ **Interactive wizard** — 10-question personalization flow (+ `--non-interactive` for CI)
 - ✅ **Non-destructive init** — re-running `skopus init` preserves user edits by default; `--force` to overwrite
-- ✅ **Claude Code adapter** — wires charter + vault refs into `.claude/CLAUDE.md` (preferred) or root `CLAUDE.md`, idempotent with automatic backup
+- ✅ **Six platform adapters** — Claude Code, Cursor, Codex, Aider, Gemini CLI, Copilot CLI. All idempotent with automatic backup.
 - ✅ **Graphify integration** — hard dependency, automatic wiring of graphify's PreToolUse hook + git post-commit hook, consolidation of graphify's block into `.claude/CLAUDE.md`
+- ✅ **`skopus charter evolve`** — session-end reflection loop. Three-question interactive prompt captures validated calls, drifts, and new rules into feedback memory and the charter's drift log. The mechanism that makes the charter compound.
 - ✅ **`skopus doctor`** — health check across all four lenses plus linked projects
-- 🚧 **Cursor / Codex / Aider / Gemini CLI / Copilot CLI adapters** — planned for v0.0.3
-- 🚧 **`/charter-evolve` loop** — planned for v0.0.3
 - 🚧 **Benchmark harness** — LongMemEval, LoCoMo, MSC, RULER, Correction-Persistence — planned for v0.1.0
+
+### Supported platforms (v0.0.3)
+
+| Platform | Context file | Detection |
+|---|---|---|
+| **Claude Code** | `.claude/CLAUDE.md` (preferred) or root `CLAUDE.md` | `~/.claude/` |
+| **Cursor** | `.cursor/rules/skopus.mdc` (alwaysApply: true) | `cursor` binary or `~/.cursor/` |
+| **Codex** (OpenAI) | `AGENTS.md` | `codex` binary or `~/.codex/` |
+| **Aider** | `AGENTS.md` | `aider` binary or `~/.aider.conf.yml` |
+| **Gemini CLI** | `GEMINI.md` | `gemini` binary or `~/.gemini/` |
+| **Copilot CLI** | `AGENTS.md` | `gh` / `copilot` binary or `~/.copilot/` |
 
 See [`docs/DESIGN.md`](docs/DESIGN.md) for the full spec and roadmap.
 

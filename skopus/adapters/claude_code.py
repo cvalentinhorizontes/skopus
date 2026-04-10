@@ -8,13 +8,16 @@ editing and appends a clearly-marked Skopus section.
 from __future__ import annotations
 
 import shutil
-from datetime import datetime
 from pathlib import Path
 
-from skopus.adapters.base import Adapter, AdapterInstallResult, AdapterStatus
-
-SKOPUS_SECTION_START = "<!-- skopus:begin -->"
-SKOPUS_SECTION_END = "<!-- skopus:end -->"
+from skopus.adapters.base import (
+    SKOPUS_SECTION_END,
+    SKOPUS_SECTION_START,
+    Adapter,
+    AdapterInstallResult,
+    AdapterStatus,
+    build_skopus_block,
+)
 
 
 def claude_md_path(project_path: Path) -> Path:
@@ -30,32 +33,8 @@ def claude_md_path(project_path: Path) -> Path:
     return project_path / "CLAUDE.md"
 
 
-def _build_skopus_block(charter_path: Path, vault_path: Path) -> str:
-    """Construct the markdown block to inject into project CLAUDE.md."""
-    memory_index = (charter_path.parent / "memory" / "MEMORY.md").resolve()
-    return f"""{SKOPUS_SECTION_START}
-## Skopus Context (auto-loaded)
-
-This project is wired to Skopus. The agent loads four lenses at session start:
-
-- **Charter:** @{charter_path}/CLAUDE.md
-- **Full charter:** @{charter_path}/workflow_partnership.md
-- **User profile:** @{charter_path}/user_profile.md
-- **Memory index:** @{memory_index}
-- **Vault index:** @{vault_path}/wiki/index.md
-
-Role delineation (the anti-fragmentation rule):
-- *How do we work?* → charter
-- *What happened before?* → memory (via search)
-- *What did we decide or learn?* → vault (via /query)
-- *What does the code look like?* → graph (via graphify MCP, when installed)
-
-Managed by Skopus — do not edit between these markers. Run `skopus unlink` to
-remove or `skopus doctor` to verify the wiring.
-
-*Wired: {datetime.now().strftime("%Y-%m-%d")}*
-{SKOPUS_SECTION_END}
-"""
+# Backwards-compat alias — some tests and callers reference the underscore name
+_build_skopus_block = build_skopus_block
 
 
 class ClaudeCodeAdapter(Adapter):

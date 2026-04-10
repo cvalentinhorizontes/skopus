@@ -21,6 +21,7 @@ from rich.table import Table
 from skopus import __version__
 from skopus.adapters import ADAPTERS, get_adapter
 from skopus.adapters.base import AdapterStatus
+from skopus.evolve import run_evolve
 from skopus.graphify_bridge import (
     first_build_hint,
     graph_exists,
@@ -313,6 +314,59 @@ def unlink(
                 projects_path.write_text(json.dumps(projects, indent=2) + "\n")
         except json.JSONDecodeError:
             pass
+
+
+charter_app = typer.Typer(
+    name="charter",
+    help="Charter operations — evolve, view, validate.",
+    no_args_is_help=True,
+)
+app.add_typer(charter_app, name="charter")
+
+
+@charter_app.command("evolve")
+def charter_evolve(
+    no_commit: bool = typer.Option(
+        False,
+        "--no-commit",
+        help="Capture entries but skip the git commit.",
+    ),
+) -> None:
+    """Session-end reflection loop. Captures validated calls, drifts, and
+    new rules into feedback memory and the charter's drift log."""
+    skopus_dir = resolve_skopus_path()
+    if not skopus_dir.exists():
+        console.print(
+            "[red]✗[/red] Skopus not initialized. Run [italic]skopus init[/italic] first."
+        )
+        raise typer.Exit(code=1)
+
+    console.print(
+        Panel.fit(
+            "[bold]Charter Evolve[/bold] — capture what happened before it evaporates.\n\n"
+            "Three quick sections: [italic]validated calls[/italic], "
+            "[italic]drifts/corrections[/italic], [italic]new rules[/italic].\n"
+            "Skip any section with 'no'. Keep answers short.",
+            title="skopus charter evolve",
+            border_style="cyan",
+        )
+    )
+
+    result = run_evolve(skopus_dir, commit=not no_commit)
+
+    if not result.entries:
+        console.print("\n[dim]No entries captured. Charter unchanged.[/dim]")
+        return
+
+    console.print(f"\n[green]✓[/green] {result.message}")
+    for path in result.feedback_files_written:
+        console.print(f"  [dim]→[/dim] {path}")
+    for section in result.charter_sections_updated:
+        console.print(f"  [dim]→[/dim] charter {section}")
+    if result.committed:
+        console.print("[green]✓[/green] Committed to [dim]~/.skopus/.git[/dim]")
+    elif not no_commit:
+        console.print("[yellow]⚠[/yellow] Nothing to commit (charter unchanged).")
 
 
 @app.command()
