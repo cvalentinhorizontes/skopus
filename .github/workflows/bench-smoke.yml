@@ -1,0 +1,52 @@
+name: bench-smoke
+
+on:
+  pull_request:
+    branches: [main]
+
+# Runs the Correction-Persistence benchmark with the mock driver on every PR.
+# The mock driver is deterministic and free (no API cost), so this is safe
+# to run on every PR as a smoke test. Real benchmark runs (with an actual
+# LLM driver) happen manually or on a release cadence.
+
+jobs:
+  bench-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install skopus
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Initialize skopus (non-interactive)
+        run: |
+          mkdir -p /tmp/smoke-home
+          HOME=/tmp/smoke-home skopus init \
+            --non-interactive \
+            --name "CI" \
+            --profile bug-hunter \
+            --vault /tmp/smoke-home/Vault
+
+      - name: Run CP benchmark (mock driver, full ablation)
+        run: |
+          HOME=/tmp/smoke-home skopus bench run cp \
+            --ablation \
+            --driver mock \
+            --limit 5 \
+            --no-save
+
+      - name: Run single CP with mock (sanity)
+        run: |
+          HOME=/tmp/smoke-home skopus bench run cp \
+            --driver mock \
+            --limit 3 \
+            --no-save

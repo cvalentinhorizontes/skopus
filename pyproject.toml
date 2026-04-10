@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "skopus"
-version = "0.0.3"
+version = "0.1.0"
 description = "Persistent four-lens context for AI coding assistants — charter, memory, vault, graph. One install, multi-agent, benchmark-driven."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -80,7 +80,7 @@ Issues = "https://github.com/cvalentinhorizontes/skopus/issues"
 Repository = "https://github.com/cvalentinhorizontes/skopus"
 
 [tool.hatch.build.targets.wheel]
-packages = ["skopus"]
+packages = ["skopus", "bench"]
 
 [tool.hatch.build.targets.wheel.shared-data]
 # (templates are inside the skopus/ package directory and picked up automatically)

@@ -1,0 +1,287 @@
+{
+  "name": "Correction-Persistence v0.1.0",
+  "description": "Does the agent apply yesterday's corrections to today's similar tasks? The test that measures the charter + feedback memory value prop.",
+  "version": "0.1.0",
+  "scenarios": [
+    {
+      "id": "cp-001",
+      "domain": "code",
+      "title": "Root cause over symptom",
+      "initial_task": "A test is failing because a mock returns None. Fix the test.",
+      "expected_mistake_pattern": "change the mock to return a truthy value without asking why it's being called",
+      "correction": "Don't patch the mock. Find out why the production code is calling it — the test was catching a real bug in the caller.",
+      "followup_task": "A different test is failing because a deserializer returns an empty list. Fix the failure.",
+      "success_criterion": {
+        "must_include": ["root cause", "why", "production"],
+        "must_not_include": ["just return", "patch the mock"]
+      },
+      "charter_relevance": "Root cause over symptom"
+    },
+    {
+      "id": "cp-002",
+      "domain": "code",
+      "title": "CI green before push",
+      "initial_task": "I made three small fixes. Push them to the PR.",
+      "expected_mistake_pattern": "run git push directly without running make ci",
+      "correction": "Never push to a PR without CI passing. Run make ci-backend first, wait for green, then push.",
+      "followup_task": "I renamed a variable and updated a comment. Push to the branch.",
+      "success_criterion": {
+        "must_include": ["make ci", "before push"],
+        "must_not_include": ["git push origin"]
+      },
+      "charter_relevance": "CI green before push"
+    },
+    {
+      "id": "cp-003",
+      "domain": "code",
+      "title": "Evidence over assumption",
+      "initial_task": "Optimize this function that I think is slow.",
+      "expected_mistake_pattern": "apply optimizations without benchmarking first",
+      "correction": "Don't optimize without evidence. Profile first, confirm the hot spot, then optimize the actual bottleneck.",
+      "followup_task": "This function feels like it's doing too much. Refactor it for performance.",
+      "success_criterion": {
+        "must_include": ["profile", "measure", "benchmark"],
+        "must_not_include": ["I think", "probably"]
+      },
+      "charter_relevance": "Evidence over assumption"
+    },
+    {
+      "id": "cp-004",
+      "domain": "tool-use",
+      "title": "Memory first before research",
+      "initial_task": "I need to add JWT auth to this project. Research the options.",
+      "expected_mistake_pattern": "spawn web research agents without checking if we already decided",
+      "correction": "Check the vault and decision docs first. We already decided on an auth approach last month — search for it before spending tokens on fresh research.",
+      "followup_task": "I want to add OAuth to the login flow. Start researching providers.",
+      "success_criterion": {
+        "must_include": ["check", "vault", "decision", "prior"],
+        "must_not_include": ["let me search the web first"]
+      },
+      "charter_relevance": "Memory first"
+    },
+    {
+      "id": "cp-005",
+      "domain": "tool-use",
+      "title": "TeamCreate over parallel agents",
+      "initial_task": "Investigate three libraries for vector search. Give me a comparison.",
+      "expected_mistake_pattern": "spawn parallel Agent calls without structured coordination",
+      "correction": "Use TeamCreate for multi-agent research, not parallel bare Agent calls. The structured team with SendMessage coordination gives better output than fire-and-forget parallelism.",
+      "followup_task": "Compare three embedding models for our use case.",
+      "success_criterion": {
+        "must_include": ["TeamCreate", "team", "coordination"],
+        "must_not_include": ["spawn parallel Agent calls"]
+      },
+      "charter_relevance": "Structured coordination"
+    },
+    {
+      "id": "cp-006",
+      "domain": "code",
+      "title": "TDD for bugfixes",
+      "initial_task": "The date formatter returns the wrong month. Fix it.",
+      "expected_mistake_pattern": "change the code without writing a failing test first",
+      "correction": "For bugfixes, always TDD: write a failing test that reproduces the bug, then fix the code to make it pass. The test is evidence the fix works.",
+      "followup_task": "The tax calculator rounds incorrectly. Fix it.",
+      "success_criterion": {
+        "must_include": ["failing test", "test first", "reproduces"],
+        "must_not_include": ["just change"]
+      },
+      "charter_relevance": "TDD for bugfixes"
+    },
+    {
+      "id": "cp-007",
+      "domain": "prose",
+      "title": "Plain language no jargon",
+      "initial_task": "Explain what this function does to a non-technical stakeholder.",
+      "expected_mistake_pattern": "use technical jargon like 'monadic', 'idempotent', 'O(n log n)'",
+      "correction": "Plain language. No jargon. Assume the stakeholder is smart but not technical — use analogies and concrete examples, not terms of art.",
+      "followup_task": "Explain what our caching layer does to a product manager.",
+      "success_criterion": {
+        "must_include": ["like", "similar to", "example"],
+        "must_not_include": ["idempotent", "monadic", "big-O"]
+      },
+      "charter_relevance": "Plain language communication"
+    },
+    {
+      "id": "cp-008",
+      "domain": "code",
+      "title": "Read before editing",
+      "initial_task": "Rename the function processData to processRecord.",
+      "expected_mistake_pattern": "use sed or find-and-replace without reading callers first",
+      "correction": "Read the file and its callers before renaming. A blind find-and-replace misses callers in other files, string references, and tests.",
+      "followup_task": "Rename the class UserHandler to UserService.",
+      "success_criterion": {
+        "must_include": ["read", "callers", "references"],
+        "must_not_include": ["sed", "find-and-replace"]
+      },
+      "charter_relevance": "Read files before modifying"
+    },
+    {
+      "id": "cp-009",
+      "domain": "tool-use",
+      "title": "Docker dev overlay for frontend",
+      "initial_task": "I changed something in the frontend. How do I see it?",
+      "expected_mistake_pattern": "suggest 'cd frontend && npm run dev'",
+      "correction": "Frontend runs in Docker. Use the dev overlay: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d frontend. Never run local npm.",
+      "followup_task": "I updated a React component. How do I test the change?",
+      "success_criterion": {
+        "must_include": ["docker compose", "docker-compose.dev"],
+        "must_not_include": ["npm run dev", "cd frontend"]
+      },
+      "charter_relevance": "Docker dev overlay"
+    },
+    {
+      "id": "cp-010",
+      "domain": "code",
+      "title": "Premium quality over 'it works'",
+      "initial_task": "Build a quick signup form.",
+      "expected_mistake_pattern": "ship the first working version without polishing edge cases, error states, accessibility",
+      "correction": "Premium quality is the bar, not 'it works'. The signup form should handle validation errors gracefully, be keyboard-accessible, and feel polished. Worth paying premium for.",
+      "followup_task": "Build a contact form with name, email, message.",
+      "success_criterion": {
+        "must_include": ["validation", "accessibility", "error state"],
+        "must_not_include": ["quick and dirty", "basic version"]
+      },
+      "charter_relevance": "Premium quality mindset"
+    },
+    {
+      "id": "cp-011",
+      "domain": "reasoning",
+      "title": "Don't pre-commit hook bypass",
+      "initial_task": "git commit -am 'fix typo'",
+      "expected_mistake_pattern": "suggest --no-verify when the hook is slow or annoying",
+      "correction": "Never --no-verify pre-commit hooks to make them go away. If the hook fails, fix the underlying issue.",
+      "followup_task": "The lint hook is complaining about a trailing comma. Commit anyway.",
+      "success_criterion": {
+        "must_include": ["fix the", "underlying"],
+        "must_not_include": ["--no-verify", "skip the hook"]
+      },
+      "charter_relevance": "Don't bypass safety checks"
+    },
+    {
+      "id": "cp-012",
+      "domain": "code",
+      "title": "No scope creep on bugfixes",
+      "initial_task": "Fix the null pointer in the user controller.",
+      "expected_mistake_pattern": "fix the bug and also refactor the surrounding code",
+      "correction": "A bugfix should fix the bug, not refactor the neighborhood. Keep scope tight — the refactor is a separate PR.",
+      "followup_task": "There's a race condition in the order processor. Fix it.",
+      "success_criterion": {
+        "must_include": ["scope", "tight", "separate"],
+        "must_not_include": ["while I'm at it", "also refactor"]
+      },
+      "charter_relevance": "Scope discipline"
+    },
+    {
+      "id": "cp-013",
+      "domain": "code",
+      "title": "YAGNI: rule of three before abstraction",
+      "initial_task": "I have two functions that do similar things. Refactor them into a shared helper.",
+      "expected_mistake_pattern": "immediately extract a helper to DRY up the two functions",
+      "correction": "Rule of three. Don't abstract on the second occurrence — that's coincidence. Wait for the third, then extract. Premature abstraction is harder to undo than duplication.",
+      "followup_task": "These two classes share a pattern. Create a base class for them.",
+      "success_criterion": {
+        "must_include": ["rule of three", "wait", "third"],
+        "must_not_include": ["extract now"]
+      },
+      "charter_relevance": "Rule of three"
+    },
+    {
+      "id": "cp-014",
+      "domain": "prose",
+      "title": "What/why/benefit structure",
+      "initial_task": "Summarize what you did in the last commit.",
+      "expected_mistake_pattern": "give a raw changelog list without explaining why or what the benefit is",
+      "correction": "Every substantive response covers: what was done, why it matters, what's the benefit. Not just a changelog.",
+      "followup_task": "Summarize the refactor you just pushed.",
+      "success_criterion": {
+        "must_include": ["why", "benefit", "matters"],
+        "must_not_include": ["changed file"]
+      },
+      "charter_relevance": "What/why/benefit response shape"
+    },
+    {
+      "id": "cp-015",
+      "domain": "code",
+      "title": "Verify empirically before optimizing",
+      "initial_task": "GPT-4 returns both content and tool_calls in one response. Build the optimizer.",
+      "expected_mistake_pattern": "trust the assumption and build the optimization without verifying",
+      "correction": "Verify LLM behavior empirically before building optimizations around assumptions. GPT-4o returns EMPTY content with tool_calls — the optimizer you'd build would never fire.",
+      "followup_task": "Claude returns partial JSON in tool_use blocks. Parse them as they arrive.",
+      "success_criterion": {
+        "must_include": ["verify", "empirically", "test first"],
+        "must_not_include": ["build the optimizer"]
+      },
+      "charter_relevance": "Verify before optimizing"
+    },
+    {
+      "id": "cp-016",
+      "domain": "tool-use",
+      "title": "Read the primary source, not inference",
+      "initial_task": "What does the graphify tool do? Summarize it.",
+      "expected_mistake_pattern": "summarize from general knowledge without fetching the README",
+      "correction": "Always fetch the primary source before summarizing. Your general knowledge is stale — the README is live truth.",
+      "followup_task": "What does the MemPalace project do?",
+      "success_criterion": {
+        "must_include": ["fetch", "README", "primary source"],
+        "must_not_include": ["generally", "in general"]
+      },
+      "charter_relevance": "Evidence before assertion"
+    },
+    {
+      "id": "cp-017",
+      "domain": "code",
+      "title": "Voice prompts need examples, not goals",
+      "initial_task": "Rewrite this voice assistant prompt to be more natural.",
+      "expected_mistake_pattern": "use abstract GOAL/COLLECT/CONTEXT/STYLE format",
+      "correction": "For voice, specific example phrasings beat abstract goals. The LLM needs to HEAR how to talk, not be told what to achieve. Scripted example lines > goal descriptions.",
+      "followup_task": "Make this customer support prompt sound more conversational.",
+      "success_criterion": {
+        "must_include": ["example", "phrasing", "script"],
+        "must_not_include": ["GOAL", "COLLECT", "abstract"]
+      },
+      "charter_relevance": "Voice-specific prompt patterns"
+    },
+    {
+      "id": "cp-018",
+      "domain": "reasoning",
+      "title": "Decisions need rationale to survive 3 months",
+      "initial_task": "Record that we chose Postgres over MongoDB.",
+      "expected_mistake_pattern": "write 'chose Postgres over MongoDB' as a single line",
+      "correction": "A decision without rationale is useless in 3 months. Always capture the context, the alternatives considered, the tradeoffs accepted.",
+      "followup_task": "Note that we're going with Redis for session storage.",
+      "success_criterion": {
+        "must_include": ["rationale", "context", "tradeoff", "alternatives"],
+        "must_not_include": ["chose X over Y\n"]
+      },
+      "charter_relevance": "Capture the why, not just the what"
+    },
+    {
+      "id": "cp-019",
+      "domain": "code",
+      "title": "Systems thinking on config changes",
+      "initial_task": "Bump the HTTP timeout from 5s to 30s.",
+      "expected_mistake_pattern": "change one config value without checking what else touches it",
+      "correction": "Every change considers the whole. Before changing a timeout, check retry policies, circuit breakers, client expectations, downstream SLAs. Isolated fixes create cascades.",
+      "followup_task": "Increase the Redis connection pool from 10 to 100.",
+      "success_criterion": {
+        "must_include": ["downstream", "impact", "systems"],
+        "must_not_include": ["just change"]
+      },
+      "charter_relevance": "Systems thinking"
+    },
+    {
+      "id": "cp-020",
+      "domain": "prose",
+      "title": "Scope discipline on questions",
+      "initial_task": "Which framework should I use for this: Next.js, Remix, or SvelteKit?",
+      "expected_mistake_pattern": "ask the user to arbitrate between the frameworks",
+      "correction": "Don't ask me to arbitrate between technical options. Research, pick the best one for this use case, explain why in plain terms, and move forward.",
+      "followup_task": "Should we use MongoDB or PostgreSQL for this service?",
+      "success_criterion": {
+        "must_include": ["recommend", "because", "best for"],
+        "must_not_include": ["which do you prefer", "let me know which"]
+      },
+      "charter_relevance": "Make technical decisions autonomously"
+    }
+  ]
+}

@@ -36,6 +36,28 @@ from skopus.renderer import (
 )
 from skopus.wizard import WizardResult, default_result, run_wizard
 
+# Lazy imports for bench subcommand (bench deps are optional)
+def _load_bench():
+    from bench.config import LensConfig
+    from bench.driver import pick_driver
+    from bench.harness import (
+        format_markdown_report,
+        list_benchmarks,
+        run_ablation,
+        run_benchmark,
+        save_report,
+    )
+
+    return {
+        "LensConfig": LensConfig,
+        "pick_driver": pick_driver,
+        "format_markdown_report": format_markdown_report,
+        "list_benchmarks": list_benchmarks,
+        "run_ablation": run_ablation,
+        "run_benchmark": run_benchmark,
+        "save_report": save_report,
+    }
+
 app = typer.Typer(
     name="skopus",
     help="Persistent four-lens context for AI coding assistants.",
@@ -322,6 +344,119 @@ charter_app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(charter_app, name="charter")
+
+bench_app = typer.Typer(
+    name="bench",
+    help="Benchmark harness — run, list, report on skopus benchmarks.",
+    no_args_is_help=True,
+)
+app.add_typer(bench_app, name="bench")
+
+
+@bench_app.command("list")
+def bench_list() -> None:
+    """Show available benchmarks."""
+    b = _load_bench()
+    benchmarks = b["list_benchmarks"]()
+    table = Table(title="Skopus Benchmarks", show_lines=False)
+    table.add_column("Name", style="bold cyan")
+    table.add_column("Description")
+    for name, desc in benchmarks.items():
+        table.add_row(name, desc)
+    console.print(table)
+
+
+@bench_app.command("run")
+def bench_run(
+    benchmark: str = typer.Argument(
+        "cp",
+        help="Benchmark name: cp, correction-persistence, longmemeval, locomo, msc, ruler, all",
+    ),
+    lens: str = typer.Option(
+        "full",
+        "--lens",
+        help="Lens config: vanilla, charter, charter+memory, charter+memory+vault, full",
+    ),
+    ablation: bool = typer.Option(
+        False,
+        "--ablation",
+        help="Run across all 5 lens configs (ignores --lens).",
+    ),
+    driver: str = typer.Option(
+        "auto",
+        "--driver",
+        help="LLM driver: auto (anthropic if available, else mock), anthropic, mock",
+    ),
+    limit: int = typer.Option(
+        None,
+        "--limit",
+        help="Run only the first N scenarios (for quick smoke tests).",
+    ),
+    save: bool = typer.Option(
+        True,
+        "--save/--no-save",
+        help="Persist results to bench/results/.",
+    ),
+) -> None:
+    """Run a benchmark against the current skopus installation."""
+    b = _load_bench()
+    LensConfig = b["LensConfig"]
+
+    skopus_dir = resolve_skopus_path()
+    if not skopus_dir.exists():
+        console.print("[red]✗[/red] Skopus not initialized. Run `skopus init` first.")
+        raise typer.Exit(code=1)
+
+    lock = read_adapters_lock(skopus_dir)
+    vault_dir = resolve_vault_path(str(lock.get("vault_location") or "~/Vault"))
+
+    driver_impl = b["pick_driver"](driver)
+    console.print(
+        Panel.fit(
+            f"[bold]Benchmark:[/bold] {benchmark}\n"
+            f"[bold]Driver:[/bold] {driver_impl.name} "
+            f"({'available' if driver_impl.available() else 'UNAVAILABLE'})\n"
+            f"[bold]Mode:[/bold] {'ablation (all 5 lens configs)' if ablation else f'single ({lens})'}\n"
+            f"[bold]Scope:[/bold] "
+            f"{'all scenarios' if limit is None else f'first {limit}'}",
+            title="skopus bench run",
+            border_style="cyan",
+        )
+    )
+
+    if ablation:
+        results = b["run_ablation"](
+            driver=driver_impl,
+            benchmark_name=benchmark,
+            skopus_dir=skopus_dir,
+            vault_dir=vault_dir,
+            limit=limit,
+        )
+        report_md = b["format_markdown_report"](results, benchmark)
+        console.print("\n")
+        console.print(report_md)
+        if save:
+            path = b["save_report"](results)
+            console.print(f"\n[green]✓[/green] Results saved: {path}")
+    else:
+        lens_enum = LensConfig(lens.replace(" ", ""))
+        report = b["run_benchmark"](
+            name=benchmark,
+            driver=driver_impl,
+            lens=lens_enum,
+            skopus_dir=skopus_dir,
+            vault_dir=vault_dir,
+            limit=limit,
+        )
+        console.print(
+            f"\n[bold]{benchmark} / {lens_enum.display_name}:[/bold] "
+            f"{report.passed}/{report.total} passed ({report.accuracy:.1%}) | "
+            f"mean score {report.mean_score:.3f} | "
+            f"{report.total_tokens:,} tokens | ${report.total_cost_usd:.4f}"
+        )
+        if save:
+            path = b["save_report"](report)
+            console.print(f"[green]✓[/green] Results saved: {path}")
 
 
 @charter_app.command("evolve")
