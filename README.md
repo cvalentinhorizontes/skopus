@@ -28,11 +28,20 @@ One install. Works with 6+ agents. Ships with a benchmark suite that proves it w
 ## Quickstart
 
 ```bash
-pip install skopus
+# Install (pick one)
+pip install skopus             # if pip works on your system
+pipx install skopus            # on Ubuntu/Debian (recommended — handles venv for you)
+
+# Set up
 skopus init                    # interactive wizard (10 questions, ~5 min)
 cd my-project && skopus link   # wire the current project to your charter + vault
 skopus doctor                  # health check all four lenses
+
+# Later: upgrade to latest
+skopus update                  # upgrades skopus + re-installs graphify + vault commands
 ```
+
+> **Note:** `init`, `link`, `update`, `doctor` are subcommands of `skopus` — not separate packages. Don't try to `pip install update` or `pipx install init`. Just type `skopus <command>`.
 
 ## What ships at v0.0.3 (alpha)
 
