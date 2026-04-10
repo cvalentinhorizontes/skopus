@@ -17,7 +17,7 @@ def test_materialize_writes_all_expected_files(tmp_path):
     vault_dir = tmp_path / "Vault"
     result = default_result(name="TestUser", seed_profile="solo-dev")
 
-    written = materialize(result, skopus_dir, vault_dir, commit=False)
+    report = materialize(result, skopus_dir, vault_dir, commit=False)
 
     # Charter files
     assert (skopus_dir / "charter" / "CLAUDE.md").exists()
@@ -46,9 +46,11 @@ def test_materialize_writes_all_expected_files(tmp_path):
     for cmd in ["ingest", "compile", "query", "lint", "wiki"]:
         assert (vault_dir / ".claude" / "commands" / f"{cmd}.md").exists()
 
-    # Every returned path actually exists
-    for path in written:
+    # Every written path actually exists; first run, nothing skipped
+    for path in report.written:
         assert path.exists(), f"{path} in written list but doesn't exist"
+    assert len(report.skipped) == 0, "first materialize should not skip anything"
+    assert report.total_files > 10
 
 
 def test_materialize_renders_user_name_into_charter(tmp_path):
@@ -81,23 +83,67 @@ def test_materialize_seeds_feedback_by_profile(tmp_path):
     assert "silent-bug" in content.lower() or "root cause" in content.lower()
 
 
-def test_materialize_is_idempotent(tmp_path):
-    """Running materialize twice should not crash or duplicate content."""
+def test_materialize_is_non_destructive_by_default(tmp_path):
+    """Running materialize twice should skip existing files on the 2nd run."""
     skopus_dir = tmp_path / ".skopus"
     vault_dir = tmp_path / "Vault"
     result = default_result(name="Idem")
 
-    written_1 = materialize(result, skopus_dir, vault_dir, commit=False)
-    written_2 = materialize(result, skopus_dir, vault_dir, commit=False)
+    report_1 = materialize(result, skopus_dir, vault_dir, commit=False)
+    report_2 = materialize(result, skopus_dir, vault_dir, commit=False)
 
-    assert len(written_1) == len(written_2)
-    # Content of charter should be identical (same timestamp resolution)
-    # (Date has day granularity so same day = same render)
+    # First run writes everything, skips nothing
+    assert len(report_1.written) > 10
+    assert len(report_1.skipped) == 0
+
+    # Second run skips the files it already wrote (non-destructive default).
+    # adapters.lock is always rewritten (it's managed state), so it's in written.
+    assert len(report_2.skipped) >= len(report_1.written) - 1
     assert (skopus_dir / "charter" / "CLAUDE.md").exists()
 
 
+def test_materialize_force_overwrites_existing(tmp_path):
+    """With force=True, existing files should be overwritten."""
+    skopus_dir = tmp_path / ".skopus"
+    vault_dir = tmp_path / "Vault"
+    result = default_result(name="Force")
+
+    materialize(result, skopus_dir, vault_dir, commit=False)
+
+    # Corrupt the charter file to verify it gets overwritten
+    charter_md = skopus_dir / "charter" / "CLAUDE.md"
+    charter_md.write_text("USER EDIT — should be overwritten by force\n")
+
+    report = materialize(result, skopus_dir, vault_dir, commit=False, force=True)
+    # With force, the charter is rewritten
+    assert charter_md in report.written
+    # The user edit is gone
+    assert "USER EDIT" not in charter_md.read_text()
+
+
+def test_materialize_preserves_user_edits_without_force(tmp_path):
+    """User-edited files must survive a non-forced re-run."""
+    skopus_dir = tmp_path / ".skopus"
+    vault_dir = tmp_path / "Vault"
+    result = default_result(name="Preserve")
+
+    materialize(result, skopus_dir, vault_dir, commit=False)
+
+    charter_md = skopus_dir / "charter" / "CLAUDE.md"
+    user_content = "# My Custom Charter\n\nI edited this and skopus should not touch it.\n"
+    charter_md.write_text(user_content)
+
+    report = materialize(result, skopus_dir, vault_dir, commit=False)
+
+    # File was NOT rewritten
+    assert charter_md in report.skipped
+    assert charter_md.read_text() == user_content
+
+
 def test_materialize_with_commit_creates_git_repos(tmp_path):
-    """When commit=True, both ~/.skopus/ and vault should be git repos."""
+    """When commit=True, both ~/.skopus/ and vault should be git repos with commits."""
+    import subprocess
+
     skopus_dir = tmp_path / ".skopus"
     vault_dir = tmp_path / "Vault"
     result = default_result(name="GitTest")
@@ -106,3 +152,14 @@ def test_materialize_with_commit_creates_git_repos(tmp_path):
 
     assert (skopus_dir / ".git").exists(), "skopus dir is not a git repo"
     assert (vault_dir / ".git").exists(), "vault dir is not a git repo"
+
+    # Verify actual commits were made (not just empty repos)
+    for repo in (skopus_dir, vault_dir):
+        log = subprocess.run(
+            ["git", "log", "--oneline"],
+            cwd=repo,
+            capture_output=True,
+            text=True,
+        )
+        assert log.returncode == 0, f"git log failed in {repo}: {log.stderr}"
+        assert log.stdout.strip(), f"no commits in {repo}"

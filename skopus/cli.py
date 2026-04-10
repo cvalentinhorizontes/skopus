@@ -21,6 +21,12 @@ from rich.table import Table
 from skopus import __version__
 from skopus.adapters import ADAPTERS, get_adapter
 from skopus.adapters.base import AdapterStatus
+from skopus.graphify_bridge import (
+    first_build_hint,
+    graph_exists,
+    graphify_available,
+    install_graphify_for_claude,
+)
 from skopus.renderer import (
     materialize,
     read_adapters_lock,
@@ -37,6 +43,21 @@ app = typer.Typer(
 )
 
 console = Console()
+
+
+def _track_linked_project(skopus_dir: Path, project_path: Path) -> None:
+    """Add a project to ~/.skopus/projects.json if not already present."""
+    projects_path = skopus_dir / "projects.json"
+    try:
+        projects: list[str] = (
+            json.loads(projects_path.read_text()) if projects_path.exists() else []
+        )
+    except json.JSONDecodeError:
+        projects = []
+    project_str = str(project_path.resolve())
+    if project_str not in projects:
+        projects.append(project_str)
+        projects_path.write_text(json.dumps(projects, indent=2) + "\n")
 
 
 @app.command()
@@ -68,6 +89,12 @@ def init(
         "--vault",
         help="Vault location (tilde expanded).",
     ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Overwrite existing files in the charter/memory/vault. Default is non-destructive merge.",
+    ),
 ) -> None:
     """Initialize Skopus — scaffold the charter, memory, and vault."""
     console.print(
@@ -93,17 +120,30 @@ def init(
     console.print(f"[dim]Vault          →[/dim] {vault_dir}")
 
     if skopus_dir.exists() and any(skopus_dir.iterdir()):
+        mode_note = (
+            "[yellow]force mode[/yellow] — existing files will be overwritten"
+            if force
+            else "non-destructive mode — existing files will be preserved"
+        )
         console.print(
-            f"\n[yellow]⚠[/yellow]  {skopus_dir} already has content. "
-            "Skopus will refresh the managed files in place without deleting anything else."
+            f"\n[yellow]⚠[/yellow]  {skopus_dir} already has content "
+            f"({mode_note})."
         )
 
-    written = materialize(result, skopus_dir, vault_dir)
+    report = materialize(result, skopus_dir, vault_dir, force=force)
 
-    console.print(f"\n[green]✓[/green] Wrote {len(written)} files")
+    console.print(
+        f"\n[green]✓[/green] Wrote {len(report.written)} files"
+        + (
+            f"  [dim]({len(report.skipped)} already present, kept)[/dim]"
+            if report.skipped
+            else ""
+        )
+    )
 
     # Wire adapters for the requested agents
     wired_any = False
+    cwd = Path.cwd()
     for agent_name in result.agents:
         key = agent_name.lower().replace(" ", "-")
         if key not in ADAPTERS:
@@ -120,12 +160,39 @@ def init(
         install_result = adapter.install(
             charter_path=skopus_dir / "charter",
             vault_path=vault_dir,
-            project_path=Path.cwd(),
+            project_path=cwd,
         )
         console.print(
             f"  [green]✓[/green] {agent_name}: {install_result.message}"
         )
         wired_any = True
+
+    # If any adapter wired and cwd looks like a project, track it and wire graphify
+    if wired_any and (cwd / ".git").exists():
+        _track_linked_project(skopus_dir, cwd)
+
+        # Wire the fourth lens (graphify) into the project
+        if graphify_available():
+            console.print("\n[bold]Wiring graphify (lens 4)...[/bold]")
+            graphify_result = install_graphify_for_claude(
+                project_path=cwd,
+                scope=result.graphify_scope,
+            )
+            if graphify_result.installed:
+                console.print(f"  [green]✓[/green] {graphify_result.message}")
+                if not graphify_result.graph_exists:
+                    scope_str = " ".join(result.graphify_scope) if result.graphify_scope else "."
+                    console.print(
+                        f"  [dim]First build pending. Inside Claude Code, run: "
+                        f"[italic]/graphify {scope_str}[/italic][/dim]"
+                    )
+            else:
+                console.print(f"  [yellow]⚠[/yellow] {graphify_result.message}")
+        else:
+            console.print(
+                "\n[yellow]⚠[/yellow] graphify CLI not on PATH — lens 4 skipped. "
+                "Reinstall skopus to pick up graphifyy."
+            )
 
     # Final summary
     summary = Table(title="Skopus Installation Summary", show_header=False, box=None)
@@ -209,17 +276,7 @@ def link(
         project_path=resolved_project,
     )
     console.print(f"[green]✓[/green] {result.message}")
-
-    # Track the linked project in projects.json
-    projects_path = skopus_dir / "projects.json"
-    try:
-        projects: list[str] = json.loads(projects_path.read_text()) if projects_path.exists() else []
-    except json.JSONDecodeError:
-        projects = []
-    project_str = str(resolved_project)
-    if project_str not in projects:
-        projects.append(project_str)
-        projects_path.write_text(json.dumps(projects, indent=2) + "\n")
+    _track_linked_project(skopus_dir, resolved_project)
 
 
 @app.command()
@@ -306,11 +363,16 @@ def doctor() -> None:
         "[green]✓[/green]" if vault_index.exists() else "[red]✗ missing[/red]",
     )
 
-    # Graphify (not installed in v0.0.1)
+    # Graphify (v0.0.2+). Check across linked projects.
+    if graphify_available():
+        # Status is per-project; show aggregate
+        graphify_status = "[green]✓ CLI available[/green]"
+    else:
+        graphify_status = "[red]✗ not installed[/red]"
     table.add_row(
         "Graphify (lens 4)",
-        "pending v0.0.2",
-        "[yellow]⏳ deferred[/yellow]",
+        "per-project",
+        graphify_status,
     )
 
     console.print(table)
@@ -334,7 +396,21 @@ def doctor() -> None:
                     if status == AdapterStatus.INSTALLED
                     else f"[yellow]{status.value}[/yellow]"
                 )
+                # Per-project graphify status
+                if graphify_available():
+                    if graph_exists(p):
+                        graph_badge = "[green]graph ✓[/green]"
+                    else:
+                        hint = first_build_hint(p)
+                        graph_badge = (
+                            f"[yellow]graph pending — run /graphify {hint}[/yellow]"
+                            if hint
+                            else "[yellow]graph pending[/yellow]"
+                        )
+                else:
+                    graph_badge = "[dim]graphify not installed[/dim]"
                 console.print(f"  {badge}  {project}")
+                console.print(f"    {graph_badge}")
         else:
             console.print(
                 "\n[dim]No projects linked yet. "

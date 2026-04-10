@@ -34,19 +34,21 @@ cd my-project && skopus link   # wire the current project to your charter + vaul
 skopus doctor                  # health check all four lenses
 ```
 
-## What ships at v0.0.1 (alpha)
+## What ships at v0.0.2 (alpha)
 
 - ✅ **Charter templates** — high-level `CLAUDE.md`, full `workflow_partnership.md`, `user_profile.md`
-- ✅ **Memory scaffold** — `MEMORY.md` index, feedback/project templates
+- ✅ **Memory scaffold** — `MEMORY.md` index, feedback/project templates, 6 seed profiles
 - ✅ **Vault scaffold** — Karpathy `raw/wiki/output` layout with `/ingest`, `/compile`, `/query`, `/lint`, `/wiki` slash commands
-- ✅ **Interactive wizard** — 10-question personalization flow
-- ✅ **Claude Code adapter** — wires charter + vault refs into project `CLAUDE.md`
-- 🚧 **Cursor / Codex / Aider / Gemini CLI / Copilot CLI adapters** — planned for v0.0.2
-- 🚧 **Graphify integration** — planned for v0.0.2 (hard dependency in pyproject)
+- ✅ **Interactive wizard** — 10-question personalization flow (+ `--non-interactive` for CI)
+- ✅ **Non-destructive init** — re-running `skopus init` preserves user edits by default; `--force` to overwrite
+- ✅ **Claude Code adapter** — wires charter + vault refs into `.claude/CLAUDE.md` (preferred) or root `CLAUDE.md`, idempotent with automatic backup
+- ✅ **Graphify integration** — hard dependency, automatic wiring of graphify's PreToolUse hook + git post-commit hook, consolidation of graphify's block into `.claude/CLAUDE.md`
+- ✅ **`skopus doctor`** — health check across all four lenses plus linked projects
+- 🚧 **Cursor / Codex / Aider / Gemini CLI / Copilot CLI adapters** — planned for v0.0.3
 - 🚧 **`/charter-evolve` loop** — planned for v0.0.3
 - 🚧 **Benchmark harness** — LongMemEval, LoCoMo, MSC, RULER, Correction-Persistence — planned for v0.1.0
 
-See `docs/DESIGN.md` for the full spec and roadmap.
+See [`docs/DESIGN.md`](docs/DESIGN.md) for the full spec and roadmap.
 
 ## The benchmark pillar
 

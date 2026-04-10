@@ -17,6 +17,19 @@ SKOPUS_SECTION_START = "<!-- skopus:begin -->"
 SKOPUS_SECTION_END = "<!-- skopus:end -->"
 
 
+def claude_md_path(project_path: Path) -> Path:
+    """Return the project's Claude Code context file.
+
+    Prefers ``<project>/.claude/CLAUDE.md`` when the ``.claude/`` directory
+    already exists (Claude Code's convention for project-scoped context).
+    Falls back to ``<project>/CLAUDE.md`` otherwise.
+    """
+    claude_dir = project_path / ".claude"
+    if claude_dir.is_dir():
+        return claude_dir / "CLAUDE.md"
+    return project_path / "CLAUDE.md"
+
+
 def _build_skopus_block(charter_path: Path, vault_path: Path) -> str:
     """Construct the markdown block to inject into project CLAUDE.md."""
     memory_index = (charter_path.parent / "memory" / "MEMORY.md").resolve()
@@ -68,7 +81,8 @@ class ClaudeCodeAdapter(Adapter):
         """
         project_path = project_path or Path.cwd()
         project_path.mkdir(parents=True, exist_ok=True)
-        claude_md = project_path / "CLAUDE.md"
+        claude_md = claude_md_path(project_path)
+        claude_md.parent.mkdir(parents=True, exist_ok=True)
         backed_up: list[Path] = []
 
         # Backup existing CLAUDE.md on first install
@@ -110,13 +124,13 @@ class ClaudeCodeAdapter(Adapter):
         removal AND a backup exists, restore the backup.
         """
         project_path = project_path or Path.cwd()
-        claude_md = project_path / "CLAUDE.md"
+        claude_md = claude_md_path(project_path)
         if not claude_md.exists():
             return AdapterInstallResult(
                 status=AdapterStatus.NOT_INSTALLED,
                 written=[],
                 backed_up=[],
-                message="No CLAUDE.md found; nothing to uninstall.",
+                message=f"No CLAUDE.md found at {claude_md}; nothing to uninstall.",
             )
 
         existing = claude_md.read_text(encoding="utf-8")
@@ -153,7 +167,7 @@ class ClaudeCodeAdapter(Adapter):
     def status(self, project_path: Path | None = None) -> AdapterStatus:
         """Report whether the wiring is intact in the project."""
         project_path = project_path or Path.cwd()
-        claude_md = project_path / "CLAUDE.md"
+        claude_md = claude_md_path(project_path)
         if not claude_md.exists():
             return AdapterStatus.NOT_INSTALLED
         content = claude_md.read_text(encoding="utf-8")
