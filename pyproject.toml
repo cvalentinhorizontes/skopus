@@ -74,9 +74,10 @@ dev = [
 skopus = "skopus.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/cvalentin/skopus"
-Documentation = "https://github.com/cvalentin/skopus/blob/main/docs/DESIGN.md"
-Issues = "https://github.com/cvalentin/skopus/issues"
+Homepage = "https://github.com/cvalentinhorizontes/skopus"
+Documentation = "https://github.com/cvalentinhorizontes/skopus/blob/main/docs/DESIGN.md"
+Issues = "https://github.com/cvalentinhorizontes/skopus/issues"
+Repository = "https://github.com/cvalentinhorizontes/skopus"
 
 [tool.hatch.build.targets.wheel]
 packages = ["skopus"]
