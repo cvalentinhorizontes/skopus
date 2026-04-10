@@ -12,9 +12,11 @@ def test_resolve_vault_path_expands_tilde(tmp_path, monkeypatch):
     assert resolved == tmp_path / "my-vault"
 
 
-def test_materialize_writes_all_expected_files(tmp_path):
+def test_materialize_writes_all_expected_files(tmp_path, monkeypatch):
     skopus_dir = tmp_path / ".skopus"
     vault_dir = tmp_path / "Vault"
+    # Redirect Path.home() so global commands land in tmp_path, not real ~/.claude/
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
     result = default_result(name="TestUser", seed_profile="solo-dev")
 
     report = materialize(result, skopus_dir, vault_dir, commit=False)
@@ -42,9 +44,10 @@ def test_materialize_writes_all_expected_files(tmp_path):
     assert (vault_dir / "wiki" / "concepts").is_dir()
     assert (vault_dir / "output").is_dir()
 
-    # Slash commands
+    # Slash commands (both in vault AND global)
     for cmd in ["ingest", "compile", "query", "lint", "wiki"]:
         assert (vault_dir / ".claude" / "commands" / f"{cmd}.md").exists()
+        assert (tmp_path / ".claude" / "commands" / f"{cmd}.md").exists()
 
     # Every written path actually exists; first run, nothing skipped
     for path in report.written:
@@ -83,10 +86,11 @@ def test_materialize_seeds_feedback_by_profile(tmp_path):
     assert "silent-bug" in content.lower() or "root cause" in content.lower()
 
 
-def test_materialize_is_non_destructive_by_default(tmp_path):
+def test_materialize_is_non_destructive_by_default(tmp_path, monkeypatch):
     """Running materialize twice should skip existing files on the 2nd run."""
     skopus_dir = tmp_path / ".skopus"
     vault_dir = tmp_path / "Vault"
+    monkeypatch.setattr(Path, "home", lambda: tmp_path)
     result = default_result(name="Idem")
 
     report_1 = materialize(result, skopus_dir, vault_dir, commit=False)
@@ -98,7 +102,7 @@ def test_materialize_is_non_destructive_by_default(tmp_path):
 
     # Second run skips the files it already wrote (non-destructive default).
     # adapters.lock is always rewritten (it's managed state), so it's in written.
-    assert len(report_2.skipped) >= len(report_1.written) - 1
+    assert len(report_2.skipped) >= len(report_1.written) - 2
     assert (skopus_dir / "charter" / "CLAUDE.md").exists()
 
 
