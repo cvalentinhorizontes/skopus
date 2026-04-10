@@ -164,6 +164,28 @@ def init(
         )
     )
 
+    # --- Global graphify skill install (unconditional, idempotent) ---
+    # This MUST run regardless of adapter detection or project state.
+    # The graphify skill file at ~/.claude/skills/graphify/SKILL.md is what
+    # makes /graphify work as a slash command. Without it, graphify is
+    # installed as a Python library but invisible to the user.
+    from skopus.graphify_bridge import ensure_graphify_skill_installed
+
+    if graphify_available():
+        skill_ok = ensure_graphify_skill_installed()
+        if skill_ok:
+            console.print("[green]✓[/green] graphify skill installed globally")
+        else:
+            console.print(
+                "[yellow]⚠[/yellow] graphify skill install failed — "
+                "/graphify may not work. Try: graphify install"
+            )
+    else:
+        console.print(
+            "[yellow]⚠[/yellow] graphify CLI not on PATH — "
+            "reinstall skopus to pick up graphifyy"
+        )
+
     # Wire adapters for the requested agents
     wired_any = False
     cwd = Path.cwd()

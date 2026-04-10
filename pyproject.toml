@@ -7,7 +7,7 @@ name = "skopus"
 version = "0.1.1"
 description = "Persistent four-lens context for AI coding assistants — charter, memory, vault, graph. One install, multi-agent, benchmark-driven."
 readme = "README.md"
-license = { file = "LICENSE" }
+license = { text = "MIT" }
 requires-python = ">=3.10"
 authors = [
     { name = "Carlos Valentin" },
