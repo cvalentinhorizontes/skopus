@@ -114,17 +114,58 @@ def _consolidate_graphify_block(project_path: Path) -> bool:
     return True
 
 
+def ensure_graphify_skill_installed() -> bool:
+    """Ensure the graphify skill file is copied to ~/.claude/skills/graphify/.
+
+    This is the **global**, **one-time**, **idempotent** setup step that makes
+    ``/graphify`` actually work as a slash command in Claude Code. Graphify's
+    `claude install` (per-project) only writes the CLAUDE.md block + PreToolUse
+    hook — it does NOT copy the skill file. The skill file is copied by the
+    top-level `graphify install` (no platform arg), which is what we call here.
+
+    Safe to call on every ``skopus init``. Returns True if the skill is in
+    place after the call (either already there or newly installed), False if
+    the install failed.
+    """
+    skill_target = Path.home() / ".claude" / "skills" / "graphify" / "SKILL.md"
+    if skill_target.exists():
+        return True
+
+    if not graphify_available():
+        return False
+
+    try:
+        result = subprocess.run(
+            ["graphify", "install"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+
+    if result.returncode != 0:
+        return False
+
+    return skill_target.exists()
+
+
 def install_graphify_for_claude(
     project_path: Path,
     scope: list[str] | None = None,
 ) -> GraphifyInstallResult:
     """Run `graphify claude install` inside a project directory.
 
-    This writes the graphify section into CLAUDE.md (graphify's upstream
-    writes to project root) and installs the PreToolUse hook that surfaces
-    the graph before file-search operations. If the project has a
-    ``.claude/CLAUDE.md`` (skopus convention), the graphify block is
-    consolidated there afterward and the root file is cleaned up.
+    Two steps:
+
+    1. **Global, one-time:** copy graphify's skill file into
+       ``~/.claude/skills/graphify/SKILL.md`` so ``/graphify`` is invokable
+       as a Claude Code slash command. (Calls ``graphify install``.)
+    2. **Per-project:** write the graphify section into CLAUDE.md and install
+       the PreToolUse hook. (Calls ``graphify claude install``.)
+
+    If the project has a ``.claude/CLAUDE.md`` (skopus convention), the
+    graphify block is consolidated there and the root file is cleaned up.
 
     The scope hint is stored in ``graphify-out/.skopus_scope`` so the
     first-build reminder can tell the user which path to pass to `/graphify`.
@@ -139,7 +180,11 @@ def install_graphify_for_claude(
             message="graphify CLI not found on PATH — install graphifyy and retry",
         )
 
-    # 1. graphify claude install
+    # 1. Global skill file (idempotent one-time step — makes /graphify
+    #    invokable as a slash command in Claude Code)
+    skill_installed = ensure_graphify_skill_installed()
+
+    # 2. Per-project: graphify claude install
     try:
         install_run = subprocess.run(
             ["graphify", "claude", "install"],
@@ -171,7 +216,7 @@ def install_graphify_for_claude(
             message=f"graphify claude install failed: {install_run.stderr.strip()[:200]}",
         )
 
-    # 1b. Consolidate graphify block into .claude/CLAUDE.md if that's where
+    # 2b. Consolidate graphify block into .claude/CLAUDE.md if that's where
     # skopus wrote (skopus convention), keeping the project root clean.
     _consolidate_graphify_block(project_path)
 
@@ -195,13 +240,16 @@ def install_graphify_for_claude(
         scope_file.parent.mkdir(parents=True, exist_ok=True)
         scope_file.write_text("\n".join(scope) + "\n")
 
+    skill_msg = "" if skill_installed else " (skill file install failed — /graphify slash command may not work)"
     return GraphifyInstallResult(
         installed=True,
         git_hook_installed=hook_installed,
         scope_hint=scope,
-        message="graphify wired into project (CLAUDE.md + PreToolUse hook + git hook)"
-        if hook_installed
-        else "graphify wired into project (CLAUDE.md + PreToolUse hook); git hook install skipped",
+        message=(
+            f"graphify wired into project (CLAUDE.md + PreToolUse hook + git hook){skill_msg}"
+            if hook_installed
+            else f"graphify wired into project (CLAUDE.md + PreToolUse hook); git hook install skipped{skill_msg}"
+        ),
         graph_exists=graph_exists(project_path),
     )
 

@@ -4,6 +4,33 @@ All notable changes to Skopus are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] — 2026-04-10
+
+Bug-fix release: `/graphify` was not actually invokable as a slash command
+in Claude Code after `skopus init`.
+
+### Fixed
+- **`/graphify` slash command missing in Claude Code** — graphify has two
+  install commands that do different things: `graphify install` (global,
+  one-time, copies the skill file to `~/.claude/skills/graphify/SKILL.md`)
+  and `graphify claude install` (per-project, writes CLAUDE.md block +
+  PreToolUse hook). Skopus was only calling the per-project one, which
+  meant `/graphify` was never a real slash command in Claude Code — only
+  the hook and CLAUDE.md block were installed. Fix: skopus now calls
+  `graphify install` (the global one-time step) before
+  `graphify claude install` during `skopus init`.
+
+### Added
+- `skopus.graphify_bridge.ensure_graphify_skill_installed()` — idempotent
+  helper that copies the graphify skill file if missing. Safe to call on
+  every `skopus init`. Short-circuits when the skill file already exists.
+- Two new tests covering the short-circuit and bool-return contract.
+
+### Testing
+- **97 tests passing**, 1 skipped (up from 95 in v0.1.0)
+
+---
+
 ## [0.1.0] — 2026-04-10
 
 The **benchmark release**. Skopus is now measurable, reproducible, and

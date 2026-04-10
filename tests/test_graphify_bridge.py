@@ -3,6 +3,7 @@
 from pathlib import Path
 
 from skopus.graphify_bridge import (
+    ensure_graphify_skill_installed,
     first_build_hint,
     graph_exists,
     graphify_available,
@@ -163,3 +164,32 @@ def test_consolidate_graphify_block_no_op_when_no_claude_dir(tmp_path):
     consolidated = _consolidate_graphify_block(project)
     assert consolidated is False
     assert (project / "CLAUDE.md").exists()
+
+
+def test_ensure_graphify_skill_installed_returns_bool():
+    """Helper must return a bool without raising regardless of host state."""
+    result = ensure_graphify_skill_installed()
+    assert isinstance(result, bool)
+
+
+def test_ensure_graphify_skill_installed_short_circuits_when_present(monkeypatch, tmp_path):
+    """When the skill file already exists, don't shell out to graphify install."""
+    fake_home = tmp_path / "fake-home"
+    skill_path = fake_home / ".claude" / "skills" / "graphify" / "SKILL.md"
+    skill_path.parent.mkdir(parents=True)
+    skill_path.write_text("# pre-existing skill stub\n")
+
+    monkeypatch.setenv("HOME", str(fake_home))
+    monkeypatch.setattr(Path, "home", lambda: fake_home)
+
+    called = {"run": False}
+
+    def _fake_run(*args, **kwargs):
+        called["run"] = True
+        raise RuntimeError("should not have been called")
+
+    monkeypatch.setattr("subprocess.run", _fake_run)
+
+    result = ensure_graphify_skill_installed()
+    assert result is True
+    assert called["run"] is False, "should not shell out when skill file already present"
