@@ -1,0 +1,60 @@
+---
+name: user-profile
+description: {{ name }}'s profile — role, preferences, working style. Consulted by the agent when shaping responses.
+type: user-profile
+created: {{ date }}
+updated: {{ date }}
+---
+
+# User Profile — {{ name }}
+
+> 🌱 *Seeded by `skopus init` on {{ date }}. Edit freely; `/charter-evolve` will grow it over time.*
+
+## Identity
+- **Name:** {{ name }}
+- **Role:** {{ role }}
+- **Time zone:** {{ timezone }}
+- **Primary stack:** {{ stack }}
+
+## Communication
+- **Style preference:** {{ comm_style }}
+- **Response shape:** what was done → why it matters → what's the benefit
+- **Terseness tolerance:** terse commands mean execute, not ask back
+
+## Working Dynamic
+- **{{ name }} gives the "what" and "why"** — product direction, business context, scope, priorities
+- **Agent gives the "how"** — architecture, implementation, verification, delivery
+- **Escalation threshold:** only for product/business decisions; technical decisions are the agent's to make
+
+## Non-Negotiables (initial set)
+
+{% for rule in non_negotiables %}
+- {{ rule }}
+{% endfor %}
+
+## Agents in Use
+
+{% for agent in agents %}
+- {{ agent }}
+{%- endfor %}
+
+## Vault Location
+
+`{{ vault_location }}`
+
+## Graphify Scope
+
+{% if graphify_scope %}
+Initial codebases mapped on first run:
+{% for path in graphify_scope %}
+- `{{ path }}`
+{%- endfor %}
+{% else %}
+*(not configured — will prompt on first `skopus link`)*
+{% endif %}
+
+---
+
+## Notes
+
+*[Free-form. Add anything about how {{ name }} works that the agent should know. Project context, personal preferences, common pitfalls, tools they like, tools they avoid.]*

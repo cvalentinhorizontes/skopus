@@ -1,0 +1,103 @@
+{# Vault operating manual. Mostly static, with dates and user name seeded. #}
+# LLM Wiki — Operating Manual
+
+> 🌱 *Seeded by `skopus init` on {{ date }} for {{ name }}.*
+
+This is a persistent, compounding markdown knowledge base. When the agent is operating in this vault (or in any project that references `@{{ vault_location }}/wiki/index.md`), it follows this manual exactly. The vault accumulates knowledge across sessions so it does not evaporate into chat history.
+
+Pattern inspired by [Karpathy's LLM Knowledge Base](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f): `raw/` is immutable source of truth, `wiki/` is a human- and AI-readable layer the agent owns, and every session's learnings get compiled back in before the context window resets.
+
+---
+
+## Directory Structure
+
+```
+{{ vault_location }}/
+├── raw/                    # Immutable source documents. NEVER modify.
+│   ├── articles/
+│   ├── transcripts/
+│   ├── papers/
+│   ├── code-snippets/
+│   └── session-notes/
+├── wiki/                   # Owned by the agent. Create, update, cross-reference.
+│   ├── index.md            # Master catalog
+│   ├── concepts/
+│   ├── entities/
+│   ├── sources/
+│   ├── decisions/
+│   └── comparisons/
+├── output/                 # Query results, generated reports
+├── log.md                  # Append-only operation log
+└── CLAUDE.md               # This file
+```
+
+- **`raw/`** is immutable truth. Never modify. If a source needs reinterpretation, update the wiki page, not the raw file.
+- **`wiki/`** is where the agent writes. Every page is a distillation, not a copy. Link back to `raw/` for full detail.
+- **`output/`** is scratch space. If an output is reusable, file it into `wiki/` and delete from `output/`.
+- **`log.md`** is append-only. Never edit previous entries.
+
+---
+
+## Wiki Page Template
+
+```markdown
+---
+title: Page Title
+type: concept | entity | source | decision | comparison
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+tags: [relevant, tags]
+sources: [raw files or URLs]
+---
+
+# Page Title
+
+Brief description (1-2 sentences).
+
+## Key Points
+- ...
+
+## Details
+...
+
+## Related
+- [[Other Page]]
+- [[Another Page]]
+```
+
+Keep pages focused. If a page grows beyond ~300 lines, split it.
+
+---
+
+## Core Rules
+
+1. **NEVER modify files in `raw/`** — they are immutable source of truth
+2. **ALWAYS update `wiki/index.md`** when creating or significantly updating a page
+3. **ALWAYS append to `log.md`** after any ingest, significant update, or lint pass
+4. **When new info contradicts existing content, flag it** with `> ⚠️ Contradiction:` in both pages
+5. **Prefer updating existing pages** over creating new ones
+6. **Keep summaries concise** — link to raw sources for full detail
+7. **Every wiki page must have at least one link** — orphans are flagged by `/lint`
+8. **Cite sources** — every claim traces back to a raw source or a decision page
+
+---
+
+## Workflows
+
+Four slash commands in `.claude/commands/`:
+
+- **`/ingest <path-or-url>`** — file a source, create summary + distilled pages, cross-link, commit
+- **`/compile [topic]`** — review the current session for valuable knowledge, file it into wiki pages before context evaporates
+- **`/query <question>`** — answer a question by synthesizing from the wiki with `[[wikilink]]` citations
+- **`/lint`** — health-check: orphans, broken links, stale pages, missing pages, contradictions
+- **`/wiki status|search|recent|stats`** — utility snapshot of the vault
+
+---
+
+## End-of-Session Reminder
+
+At the end of every session where significant work was done, suggest running `/compile` to capture knowledge before the session ends. Non-negotiable for sessions that made architectural decisions, solved hard bugs, evaluated tools, discovered gotchas, or produced reusable code snippets.
+
+---
+
+**Last updated:** {{ date }}

@@ -1,0 +1,46 @@
+{# Memory index. Auto-loaded at session start. Keep under 200 lines. #}
+# Memory Index — {{ name }}
+
+> 🌱 *Seeded by `skopus init` on {{ date }}. `/charter-evolve` will add entries over time.*
+
+## Read This First — Every Session
+
+- **[../charter/CLAUDE.md](../charter/CLAUDE.md)** — Partnership charter (high-level)
+- **[../charter/workflow_partnership.md](../charter/workflow_partnership.md)** — Full charter (drift log, anti-rationalization)
+- **[../charter/user_profile.md](../charter/user_profile.md)** — {{ name }}'s profile
+
+## Feedback Memory
+
+*Corrections and validated judgment calls. Each file has **Why** and **How to apply** sections.*
+
+{% if seed_profile and seed_profile != 'blank' %}
+- [feedback/{{ seed_profile }}_seed.md](feedback/{{ seed_profile }}_seed.md) — Seed feedback from {{ seed_profile }} profile
+{% else %}
+*(empty — will grow via `/charter-evolve`)*
+{% endif %}
+
+## Project Memory
+
+*Per-project state, context, and decisions. Populated by `skopus link` when you link a project.*
+
+*(empty — run `skopus link` inside a project to add)*
+
+## Reference Memory
+
+*Pointers to where information lives in external systems (Linear, Jira, Slack, docs, etc.).*
+
+*(empty — add references as they emerge)*
+
+---
+
+**How this index works:**
+- Entries are one line each: `- [file.md](file.md) — one-line hook`
+- Keep this file under 200 lines (content after line 200 is truncated on load)
+- Update immediately when a new memory file is created
+
+**Memory categories:**
+| Category | Purpose |
+|---|---|
+| `feedback/` | Corrections and validated judgment calls |
+| `project/` | Per-project state and context |
+| `reference/` | Pointers to external systems |

@@ -1,0 +1,96 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "skopus"
+version = "0.0.1"
+description = "Persistent four-lens context for AI coding assistants — charter, memory, vault, graph. One install, multi-agent, benchmark-driven."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [
+    { name = "Carlos Valentin" },
+]
+keywords = [
+    "ai",
+    "agent",
+    "memory",
+    "knowledge-graph",
+    "claude-code",
+    "cursor",
+    "codex",
+    "llm-wiki",
+    "karpathy",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development",
+    "Topic :: Software Development :: Documentation",
+]
+dependencies = [
+    "typer>=0.12",
+    "rich>=13.7",
+    "jinja2>=3.1",
+    "questionary>=2.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+graph = [
+    # Fourth lens (graphify integration). Enabled in v0.0.2. See docs/DESIGN.md.
+    # "graphifyy[mcp,pdf,watch,leiden]>=0.1",
+]
+bench = [
+    # Benchmark harness (LongMemEval, LoCoMo, MSC, RULER, Correction-Persistence).
+    # Enabled in v0.1.0. See docs/DESIGN.md §4.
+    "datasets>=2.14",
+    "numpy>=1.26",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-mock>=3.12",
+    "ruff>=0.5",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+skopus = "skopus.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/cvalentin/skopus"
+Documentation = "https://github.com/cvalentin/skopus/blob/main/docs/DESIGN.md"
+Issues = "https://github.com/cvalentin/skopus/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["skopus"]
+
+[tool.hatch.build.targets.wheel.shared-data]
+# (templates are inside the skopus/ package directory and picked up automatically)
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "C4", "SIM", "RUF"]
+ignore = ["E501"]  # line length handled by formatter
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-q --tb=short"

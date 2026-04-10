@@ -1,0 +1,18 @@
+# Wiki Operation Log
+
+Append-only. Never edit previous entries. Each new operation goes at the bottom.
+
+Format:
+```
+## [YYYY-MM-DD HH:MM] operation | Subject
+Brief description.
+Pages touched: [[Page1]], [[Page2]]
+```
+
+Operations: `init`, `ingest`, `compile`, `query`, `lint`, `update`, `fix`.
+
+---
+
+## [{{ date }} {{ time }}] init | Wiki Bootstrap
+LLM Wiki initialized by `skopus init` for {{ name }}. Vault structure, CLAUDE.md schema, and 5 slash command skills in place.
+Pages touched: [[index]]
