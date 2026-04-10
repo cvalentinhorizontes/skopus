@@ -252,6 +252,23 @@ def materialize(
         content = _load_template_text(tmpl_rel)
         _materialize_one(vault_dir / out_rel, content)
 
+    # --- Global slash commands (~/.claude/commands/) ---
+    # Vault commands must be installed globally so they work from any project
+    # directory, not just when working inside the vault. Same class of issue
+    # as graphify's skill file — agent slash commands need to be in the
+    # platform's global commands directory.
+    global_cmds_dir = Path.home() / ".claude" / "commands"
+    global_cmds_dir.mkdir(parents=True, exist_ok=True)
+    for _, out_rel in VAULT_STATIC:
+        if out_rel.startswith(".claude/commands/"):
+            cmd_name = out_rel.split("/")[-1]
+            content = _load_template_text(f"vault/{out_rel}")
+            global_path = global_cmds_dir / cmd_name
+            if _write(global_path, content, force=force):
+                report.written.append(global_path)
+            else:
+                report.skipped.append(global_path)
+
     if commit:
         _git_init_and_commit(vault_dir, f"init: vault bootstrap for {result.name}")
 
