@@ -90,6 +90,80 @@ def version() -> None:
 
 
 @app.command()
+def update() -> None:
+    """Update skopus to the latest version and re-install all global components.
+
+    Runs pip upgrade, then re-installs the graphify skill file and vault
+    slash commands so any new features from the update are immediately available.
+    """
+    import subprocess
+    import sys
+
+    console.print("[bold]Updating skopus...[/bold]\n")
+
+    # Step 1: pip upgrade
+    console.print("[dim]Step 1/3:[/dim] Upgrading skopus via pip...")
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", "--upgrade", "skopus"],
+            capture_output=True,
+            text=True,
+            timeout=300,
+        )
+        if result.returncode == 0:
+            # Check what version we got
+            version_check = subprocess.run(
+                [sys.executable, "-c", "import skopus; print(skopus.__version__)"],
+                capture_output=True,
+                text=True,
+            )
+            new_ver = version_check.stdout.strip() if version_check.returncode == 0 else "unknown"
+            if f"already satisfied" in result.stdout.lower() or "already up-to-date" in result.stdout.lower():
+                console.print(f"  [green]✓[/green] Already on latest ({new_ver})")
+            else:
+                console.print(f"  [green]✓[/green] Upgraded to v{new_ver}")
+        else:
+            console.print(f"  [yellow]⚠[/yellow] pip upgrade returned non-zero: {result.stderr[:200]}")
+    except subprocess.TimeoutExpired:
+        console.print("  [yellow]⚠[/yellow] pip upgrade timed out (300s)")
+    except FileNotFoundError:
+        console.print("  [red]✗[/red] pip not found")
+
+    # Step 2: re-install graphify skill globally
+    console.print("[dim]Step 2/3:[/dim] Installing graphify skill...")
+    from skopus.graphify_bridge import ensure_graphify_skill_installed
+
+    if graphify_available():
+        if ensure_graphify_skill_installed():
+            console.print("  [green]✓[/green] /graphify skill installed at ~/.claude/skills/graphify/")
+        else:
+            console.print("  [yellow]⚠[/yellow] graphify skill install failed — try: graphify install")
+    else:
+        console.print("  [yellow]⚠[/yellow] graphify CLI not on PATH")
+
+    # Step 3: re-install vault slash commands globally
+    console.print("[dim]Step 3/3:[/dim] Installing vault commands globally...")
+    from skopus.renderer import _load_template_text, VAULT_STATIC, _write
+
+    global_cmds_dir = Path.home() / ".claude" / "commands"
+    global_cmds_dir.mkdir(parents=True, exist_ok=True)
+    installed_count = 0
+    for _, out_rel in VAULT_STATIC:
+        if out_rel.startswith(".claude/commands/"):
+            cmd_name = out_rel.split("/")[-1]
+            content = _load_template_text(f"vault/{out_rel}")
+            global_path = global_cmds_dir / cmd_name
+            _write(global_path, content, force=True)  # always refresh on update
+            installed_count += 1
+    console.print(f"  [green]✓[/green] {installed_count} commands at ~/.claude/commands/")
+
+    console.print(
+        "\n[bold green]Update complete.[/bold green] "
+        "Restart your Claude Code session to pick up any changes."
+    )
+
+
+@app.command()
 def init(
     non_interactive: bool = typer.Option(
         False,

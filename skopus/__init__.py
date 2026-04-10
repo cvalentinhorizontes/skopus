@@ -3,4 +3,4 @@
 Charter, memory, vault, graph. One install, multi-agent, benchmark-driven.
 """
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
