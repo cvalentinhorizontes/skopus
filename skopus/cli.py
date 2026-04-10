@@ -183,7 +183,7 @@ def init(
     else:
         console.print(
             "[yellow]⚠[/yellow] graphify CLI not on PATH — "
-            "reinstall skopus to pick up graphifyy"
+            "reinstall skopus to pick up graphify"
         )
 
     # Wire adapters for the requested agents
