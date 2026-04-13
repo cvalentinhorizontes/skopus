@@ -74,6 +74,16 @@ class Adapter(ABC):
         return "/charter-evolve"
 
 
+def _read_file_safe(path: Path, max_chars: int = 10000) -> str:
+    """Read a file if it exists, truncating if too long."""
+    if not path.exists():
+        return f"(file not found: {path})"
+    content = path.read_text(encoding="utf-8")
+    if len(content) > max_chars:
+        return content[:max_chars] + "\n[... truncated ...]\n"
+    return content
+
+
 def build_skopus_block(
     charter_path: Path,
     vault_path: Path,
@@ -84,30 +94,60 @@ def build_skopus_block(
 
     The block is bracketed by HTML comment markers (<!-- skopus:begin --> /
     <!-- skopus:end -->) so it can be detected and updated idempotently.
-    Markdown format works for .md files; Cursor's .mdc format inherits it.
+
+    IMPORTANT: The charter, user profile, and memory index are INLINED into
+    the block (not @-referenced). This avoids Claude Code's "import external
+    files?" permission prompt which fires when @ references point outside
+    the project directory. The vault index IS @-referenced because it's
+    typically small and the user expects the agent to have access.
     """
-    memory_index = (charter_path.parent / "memory" / "MEMORY.md").resolve()
     date = datetime.now().strftime("%Y-%m-%d")
+
+    # Read the files we'll inline
+    charter_content = _read_file_safe(charter_path / "CLAUDE.md")
+    user_profile = _read_file_safe(charter_path / "user_profile.md")
+    memory_index = _read_file_safe(charter_path.parent / "memory" / "MEMORY.md", max_chars=4000)
 
     return f"""{SKOPUS_SECTION_START}
 ## Skopus Context (auto-loaded)
 
-This project is wired to Skopus. The agent loads four lenses at session start:
-
-- **Charter:** @{charter_path}/CLAUDE.md
-- **Full charter:** @{charter_path}/workflow_partnership.md
-- **User profile:** @{charter_path}/user_profile.md
-- **Memory index:** @{memory_index}
-- **Vault index:** @{vault_path}/wiki/index.md
+This project is wired to Skopus. The agent loads four lenses at session start.
+Managed by Skopus — do not edit between these markers. Run `skopus unlink` to
+remove or `skopus doctor` to verify the wiring.
 
 Role delineation (the anti-fragmentation rule):
-- *How do we work?* → charter
-- *What happened before?* → memory (via search)
+- *How do we work?* → charter (below)
+- *What happened before?* → memory (below + search)
 - *What did we decide or learn?* → vault (via /query)
 - *What does the code look like?* → graph (via graphify MCP, when installed)
 
-Managed by Skopus — do not edit between these markers. Run `skopus unlink` to
-remove or `skopus doctor` to verify the wiring.
+### Charter
+
+{charter_content}
+
+### User Profile
+
+{user_profile}
+
+### Memory Index
+
+{memory_index}
+
+### Vault
+
+Vault location: `{vault_path}`
+
+To query the vault: `/query <question>`
+To capture session knowledge: `/compile`
+To ingest a source: `/ingest <path-or-url>`
+
+### File Locations (for /charter-evolve and direct edits)
+
+- Charter: `{charter_path}/CLAUDE.md`
+- Full charter: `{charter_path}/workflow_partnership.md`
+- User profile: `{charter_path}/user_profile.md`
+- Memory: `{charter_path.parent}/memory/`
+- Vault: `{vault_path}/`
 
 *Wired: {date}*
 {SKOPUS_SECTION_END}

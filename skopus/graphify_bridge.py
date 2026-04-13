@@ -41,8 +41,29 @@ class GraphifyInstallResult:
 
 
 def graphify_available() -> bool:
-    """Return True if the graphify CLI is on PATH."""
-    return shutil.which("graphify") is not None
+    """Return True if graphify is usable (either CLI on PATH or importable).
+
+    pipx installs hide dependency binaries inside their venv, so
+    `shutil.which('graphify')` returns None even when graphifyy is installed.
+    Fall back to checking if the Python package is importable.
+    """
+    if shutil.which("graphify") is not None:
+        return True
+    return graphify_python_importable()
+
+
+def _graphify_cmd() -> list[str]:
+    """Return the command to invoke graphify.
+
+    If the `graphify` binary is on PATH, use it directly. Otherwise
+    fall back to `python -m graphify` which works when graphifyy is
+    installed as a dependency (e.g. inside a pipx venv) but the binary
+    isn't exposed.
+    """
+    if shutil.which("graphify") is not None:
+        return ["graphify"]
+    import sys
+    return [sys.executable, "-m", "graphify"]
 
 
 def graphify_python_importable() -> bool:
@@ -123,6 +144,9 @@ def ensure_graphify_skill_installed() -> bool:
     hook — it does NOT copy the skill file. The skill file is copied by the
     top-level `graphify install` (no platform arg), which is what we call here.
 
+    Uses ``_graphify_cmd()`` so it works both when the `graphify` binary is on
+    PATH (pip install) and when it's hidden inside a pipx venv (pipx install).
+
     Safe to call on every ``skopus init``. Returns True if the skill is in
     place after the call (either already there or newly installed), False if
     the install failed.
@@ -136,7 +160,7 @@ def ensure_graphify_skill_installed() -> bool:
 
     try:
         result = subprocess.run(
-            ["graphify", "install"],
+            [*_graphify_cmd(), "install"],
             capture_output=True,
             text=True,
             timeout=60,
@@ -187,7 +211,7 @@ def install_graphify_for_claude(
     # 2. Per-project: graphify claude install
     try:
         install_run = subprocess.run(
-            ["graphify", "claude", "install"],
+            [*_graphify_cmd(), "claude", "install"],
             cwd=project_path,
             capture_output=True,
             text=True,
@@ -224,7 +248,7 @@ def install_graphify_for_claude(
     hook_installed = False
     try:
         hook_run = subprocess.run(
-            ["graphify", "hook", "install"],
+            [*_graphify_cmd(), "hook", "install"],
             cwd=project_path,
             capture_output=True,
             text=True,
@@ -267,7 +291,7 @@ def uninstall_graphify_for_claude(project_path: Path) -> GraphifyInstallResult:
     for subcmd in [["claude", "uninstall"], ["hook", "uninstall"]]:
         try:
             subprocess.run(
-                ["graphify", *subcmd],
+                [*_graphify_cmd(), *subcmd],
                 cwd=project_path,
                 capture_output=True,
                 text=True,
