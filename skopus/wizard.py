@@ -107,9 +107,14 @@ class WizardResult:
     )
     timezone: str = "UTC"
     agents: list[str] = field(default_factory=lambda: ["Claude Code"])
-    vault_location: str = "~/Vault"
     graphify_scope: list[str] = field(default_factory=list)
     seed_profile: str = "blank"
+
+    # v0.2.0: vault_location removed — vault always lives at ~/.skopus/vault/
+    # Kept as a property for backwards compat with templates that reference it
+    @property
+    def vault_location(self) -> str:
+        return "~/.skopus/vault"
 
     def as_context(self) -> dict[str, object]:
         """Convert to template rendering context, with date/time added."""
@@ -117,6 +122,7 @@ class WizardResult:
         now = datetime.now()
         ctx["date"] = now.strftime("%Y-%m-%d")
         ctx["time"] = now.strftime("%H:%M")
+        ctx["vault_location"] = self.vault_location
         return ctx
 
 
@@ -196,19 +202,14 @@ def run_wizard() -> WizardResult:
         choices=AGENT_CHOICES,
     ).ask() or ["Claude Code"]
 
-    # Q8: vault location
-    vault_location = questionary.text(
-        "Vault location", default="~/Vault"
-    ).ask() or "~/Vault"
-
-    # Q9: graphify scope
+    # Q8: graphify scope
     graphify_raw = questionary.text(
-        "Which codebases should be mapped on first graphify run? (comma-separated paths, or blank to skip for now)",
+        "Which codebases should graphify map? (comma-separated paths, or blank to skip for now)",
         default="",
     ).ask() or ""
     graphify_scope = [p.strip() for p in graphify_raw.split(",") if p.strip()]
 
-    # Q10: seed profile
+    # Q9: seed profile
     seed_profile = questionary.select(
         "Initial seed profile?",
         choices=SEED_PROFILE_CHOICES,
@@ -223,7 +224,6 @@ def run_wizard() -> WizardResult:
         non_negotiables=non_negotiables,
         timezone=timezone,
         agents=agents,
-        vault_location=vault_location,
         graphify_scope=graphify_scope,
         seed_profile=seed_profile,
     )

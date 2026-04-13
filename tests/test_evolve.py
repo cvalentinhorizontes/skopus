@@ -48,9 +48,9 @@ def test_write_feedback_file(tmp_path):
 def test_append_to_charter_adds_drift_entry(tmp_path):
     """Drift entries should be appended to §7 of the full charter."""
     skopus_dir = tmp_path / ".skopus"
-    vault_dir = tmp_path / "Vault"
+    # v0.2.0: vault merged into skopus_dir, no separate vault_dir
     result = default_result(name="EvolveTest")
-    materialize(result, skopus_dir, vault_dir, commit=False)
+    materialize(result, skopus_dir, commit=False)
 
     drift = EvolveEntry(
         kind="drift",
@@ -68,8 +68,8 @@ def test_append_to_charter_adds_drift_entry(tmp_path):
 
 def test_append_to_charter_adds_win_entry(tmp_path):
     skopus_dir = tmp_path / ".skopus"
-    vault_dir = tmp_path / "Vault"
-    materialize(default_result(name="WinTest"), skopus_dir, vault_dir, commit=False)
+    # v0.2.0: vault merged into skopus_dir, no separate vault_dir
+    materialize(default_result(name="WinTest"), skopus_dir, commit=False)
 
     win = EvolveEntry(
         kind="validated",
@@ -86,8 +86,8 @@ def test_append_to_charter_adds_win_entry(tmp_path):
 
 def test_run_evolve_with_no_entries_is_noop(tmp_path):
     skopus_dir = tmp_path / ".skopus"
-    vault_dir = tmp_path / "Vault"
-    materialize(default_result(name="Noop"), skopus_dir, vault_dir, commit=False)
+    # v0.2.0: vault merged into skopus_dir, no separate vault_dir
+    materialize(default_result(name="Noop"), skopus_dir, commit=False)
 
     result = run_evolve(skopus_dir, entries=[], commit=False)
     assert result.entries == []
@@ -98,8 +98,8 @@ def test_run_evolve_with_no_entries_is_noop(tmp_path):
 
 def test_run_evolve_with_explicit_entries(tmp_path):
     skopus_dir = tmp_path / ".skopus"
-    vault_dir = tmp_path / "Vault"
-    materialize(default_result(name="Explicit"), skopus_dir, vault_dir, commit=False)
+    # v0.2.0: vault merged into skopus_dir, no separate vault_dir
+    materialize(default_result(name="Explicit"), skopus_dir, commit=False)
 
     entries = [
         EvolveEntry(
@@ -132,8 +132,8 @@ def test_run_evolve_with_explicit_entries(tmp_path):
 
 def test_run_evolve_commits_when_enabled(tmp_path):
     skopus_dir = tmp_path / ".skopus"
-    vault_dir = tmp_path / "Vault"
-    materialize(default_result(name="Commit"), skopus_dir, vault_dir, commit=True)
+    # v0.2.0: vault merged into skopus_dir, no separate vault_dir
+    materialize(default_result(name="Commit"), skopus_dir, commit=True)
 
     entries = [
         EvolveEntry(

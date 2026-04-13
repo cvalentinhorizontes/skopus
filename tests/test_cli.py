@@ -1,4 +1,4 @@
-"""CLI smoke tests using typer's CliRunner."""
+"""CLI smoke tests using typer's CliRunner (v0.2.0 — unified directory)."""
 
 from pathlib import Path
 
@@ -29,8 +29,6 @@ def test_init_non_interactive(tmp_path, monkeypatch):
             "SmokeTest",
             "--profile",
             "solo-dev",
-            "--vault",
-            str(tmp_path / "MyVault"),
         ],
     )
 
@@ -42,12 +40,10 @@ def test_init_non_interactive(tmp_path, monkeypatch):
     skopus_dir = tmp_path / ".skopus"
     assert (skopus_dir / "charter" / "CLAUDE.md").exists()
     assert (skopus_dir / "memory" / "MEMORY.md").exists()
+    # Vault is now inside ~/.skopus/vault/
+    assert (skopus_dir / "vault" / "CLAUDE.md").exists()
+    assert (skopus_dir / "vault" / "wiki" / "index.md").exists()
 
-    vault_dir = tmp_path / "MyVault"
-    assert (vault_dir / "CLAUDE.md").exists()
-    assert (vault_dir / "wiki" / "index.md").exists()
-
-    # Charter should contain the name
     charter_text = (skopus_dir / "charter" / "CLAUDE.md").read_text()
     assert "SmokeTest" in charter_text
 
@@ -57,7 +53,6 @@ def test_doctor_reports_missing_installation(tmp_path, monkeypatch):
 
     runner = CliRunner()
     result = runner.invoke(app, ["doctor"])
-    # Should exit with error because nothing is initialized
     assert result.exit_code == 1
 
 
@@ -66,21 +61,12 @@ def test_doctor_reports_installed_state(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
 
     runner = CliRunner()
-    # First init
     init_result = runner.invoke(
         app,
-        [
-            "init",
-            "--non-interactive",
-            "--name",
-            "DocTest",
-            "--vault",
-            str(tmp_path / "Vault"),
-        ],
+        ["init", "--non-interactive", "--name", "DocTest"],
     )
     assert init_result.exit_code == 0
 
-    # Then doctor
     doctor_result = runner.invoke(app, ["doctor"])
     assert doctor_result.exit_code == 0
     assert "Charter" in doctor_result.stdout

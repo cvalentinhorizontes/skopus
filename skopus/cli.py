@@ -32,7 +32,6 @@ from skopus.renderer import (
     materialize,
     read_adapters_lock,
     resolve_skopus_path,
-    resolve_vault_path,
 )
 from skopus.wizard import WizardResult, default_result, run_wizard
 
@@ -179,26 +178,21 @@ def init(
     profile: str = typer.Option(
         "blank",
         "--profile",
-        help="Seed profile for non-interactive mode: blank, solo-dev, team-lead, research, founder, bug-hunter.",
-    ),
-    vault: str = typer.Option(
-        "~/Vault",
-        "--vault",
-        help="Vault location (tilde expanded).",
+        help="Seed profile: blank, solo-dev, team-lead, research, founder, bug-hunter.",
     ),
     force: bool = typer.Option(
         False,
         "--force",
         "-f",
-        help="Overwrite existing files in the charter/memory/vault. Default is non-destructive merge.",
+        help="Overwrite existing files. Default is non-destructive merge.",
     ),
 ) -> None:
-    """Initialize Skopus — scaffold the charter, memory, and vault."""
+    """Initialize Skopus — one command, everything set up."""
     console.print(
         Panel.fit(
             "[bold]Skopus — Four-Lens Context for AI Coding Assistants[/bold]\n\n"
-            "Scaffolding your charter, memory, and vault.\n"
-            "Everything is editable. [italic]/charter-evolve[/italic] will grow it over time.",
+            "One command. Charter, memory, vault, and graph — all set up.\n"
+            "Everything is editable. [italic]/charter-evolve[/italic] compounds it over time.",
             title="skopus init",
             border_style="cyan",
         )
@@ -206,138 +200,86 @@ def init(
 
     if non_interactive:
         result = default_result(name=name, seed_profile=profile)
-        result.vault_location = vault
     else:
         result = run_wizard()
 
     skopus_dir = resolve_skopus_path()
-    vault_dir = resolve_vault_path(result.vault_location)
-
-    console.print(f"\n[dim]Charter + memory →[/dim] {skopus_dir}")
-    console.print(f"[dim]Vault          →[/dim] {vault_dir}")
+    console.print(f"\n[dim]Everything goes to →[/dim] {skopus_dir}")
 
     if skopus_dir.exists() and any(skopus_dir.iterdir()):
-        mode_note = (
-            "[yellow]force mode[/yellow] — existing files will be overwritten"
-            if force
-            else "non-destructive mode — existing files will be preserved"
-        )
-        console.print(
-            f"\n[yellow]⚠[/yellow]  {skopus_dir} already has content "
-            f"({mode_note})."
-        )
+        mode = "force — overwriting" if force else "non-destructive — preserving edits"
+        console.print(f"[dim]  ({mode})[/dim]")
 
-    report = materialize(result, skopus_dir, vault_dir, force=force)
-
+    # --- Step 1: Scaffold files ---
+    report = materialize(result, skopus_dir, force=force)
     console.print(
         f"\n[green]✓[/green] Wrote {len(report.written)} files"
-        + (
-            f"  [dim]({len(report.skipped)} already present, kept)[/dim]"
-            if report.skipped
-            else ""
-        )
+        + (f"  [dim]({len(report.skipped)} kept)[/dim]" if report.skipped else "")
     )
 
-    # --- Global graphify skill install (unconditional, idempotent) ---
-    # This MUST run regardless of adapter detection or project state.
-    # The graphify skill file at ~/.claude/skills/graphify/SKILL.md is what
-    # makes /graphify work as a slash command. Without it, graphify is
-    # installed as a Python library but invisible to the user.
+    # --- Step 2: Install graphify skill globally ---
     from skopus.graphify_bridge import ensure_graphify_skill_installed
 
     if graphify_available():
-        skill_ok = ensure_graphify_skill_installed()
-        if skill_ok:
-            console.print("[green]✓[/green] graphify skill installed globally")
+        if ensure_graphify_skill_installed():
+            console.print("[green]✓[/green] /graphify skill installed")
         else:
-            console.print(
-                "[yellow]⚠[/yellow] graphify skill install failed — "
-                "/graphify may not work. Try: graphify install"
+            console.print("[yellow]⚠[/yellow] graphify skill install failed")
+    else:
+        console.print("[yellow]⚠[/yellow] graphify not available")
+
+    # --- Step 3: Auto-link current project if inside a git repo ---
+    cwd = Path.cwd()
+    wired_any = False
+    if (cwd / ".git").exists():
+        console.print(f"\n[bold]Linking current project:[/bold] {cwd.name}")
+        for agent_name in result.agents:
+            key = agent_name.lower().replace(" ", "-")
+            if key not in ADAPTERS:
+                continue
+            adapter = get_adapter(key)
+            if not adapter.detect():
+                continue
+            install_result = adapter.install(
+                charter_path=skopus_dir / "charter",
+                vault_path=skopus_dir / "vault",
+                project_path=cwd,
             )
+            console.print(f"  [green]✓[/green] {agent_name}: {install_result.message}")
+            wired_any = True
+
+        if wired_any:
+            _track_linked_project(skopus_dir, cwd)
+
+            # Wire graphify into the project
+            if graphify_available():
+                graphify_result = install_graphify_for_claude(
+                    project_path=cwd,
+                    scope=result.graphify_scope,
+                )
+                if graphify_result.installed:
+                    console.print(f"  [green]✓[/green] {graphify_result.message}")
     else:
         console.print(
-            "[yellow]⚠[/yellow] graphify CLI not on PATH — "
-            "reinstall skopus to pick up graphify"
+            "\n[dim]Not inside a git repo — run [italic]skopus link[/italic] "
+            "inside a project to wire it.[/dim]"
         )
 
-    # Wire adapters for the requested agents
-    wired_any = False
-    cwd = Path.cwd()
-    for agent_name in result.agents:
-        key = agent_name.lower().replace(" ", "-")
-        if key not in ADAPTERS:
-            console.print(
-                f"  [dim]…[/dim] {agent_name}: adapter planned for v0.0.2 (skipped)"
-            )
-            continue
-        adapter = get_adapter(key)
-        if not adapter.detect():
-            console.print(
-                f"  [dim]…[/dim] {agent_name}: not detected on host (skipped)"
-            )
-            continue
-        install_result = adapter.install(
-            charter_path=skopus_dir / "charter",
-            vault_path=vault_dir,
-            project_path=cwd,
-        )
-        console.print(
-            f"  [green]✓[/green] {agent_name}: {install_result.message}"
-        )
-        wired_any = True
-
-    # If any adapter wired and cwd looks like a project, track it and wire graphify
-    if wired_any and (cwd / ".git").exists():
-        _track_linked_project(skopus_dir, cwd)
-
-        # Wire the fourth lens (graphify) into the project
-        if graphify_available():
-            console.print("\n[bold]Wiring graphify (lens 4)...[/bold]")
-            graphify_result = install_graphify_for_claude(
-                project_path=cwd,
-                scope=result.graphify_scope,
-            )
-            if graphify_result.installed:
-                console.print(f"  [green]✓[/green] {graphify_result.message}")
-                if not graphify_result.graph_exists:
-                    scope_str = " ".join(result.graphify_scope) if result.graphify_scope else "."
-                    console.print(
-                        f"  [dim]First build pending. Inside Claude Code, run: "
-                        f"[italic]/graphify {scope_str}[/italic][/dim]"
-                    )
-            else:
-                console.print(f"  [yellow]⚠[/yellow] {graphify_result.message}")
-        else:
-            console.print(
-                "\n[yellow]⚠[/yellow] graphify CLI not on PATH — lens 4 skipped. "
-                "Reinstall skopus to pick up graphifyy."
-            )
-
-    # Final summary
-    summary = Table(title="Skopus Installation Summary", show_header=False, box=None)
-    summary.add_column("", style="dim")
-    summary.add_column("")
-    summary.add_row("Name:", result.name)
-    summary.add_row("Role:", result.role)
-    summary.add_row("Stack:", result.stack)
-    summary.add_row("Charter:", str(skopus_dir / "charter" / "CLAUDE.md"))
-    summary.add_row("Memory:", str(skopus_dir / "memory" / "MEMORY.md"))
-    summary.add_row("Vault:", str(vault_dir / "wiki" / "index.md"))
-    summary.add_row("Agents:", ", ".join(result.agents))
-    console.print("\n")
-    console.print(summary)
-
+    # --- Summary ---
+    console.print(f"\n[bold green]Done.[/bold green] Skopus is ready.")
     console.print(
-        "\n[bold cyan]Next steps:[/bold cyan]\n"
-        "  1. Review your charter: [italic]cat "
-        f"{skopus_dir / 'charter' / 'CLAUDE.md'}[/italic]\n"
-        "  2. Link a project:     [italic]cd my-project && skopus link[/italic]\n"
-        "  3. Health check:       [italic]skopus doctor[/italic]\n"
+        f"  Charter:  {skopus_dir / 'charter' / 'CLAUDE.md'}\n"
+        f"  Memory:   {skopus_dir / 'memory' / 'MEMORY.md'}\n"
+        f"  Vault:    {skopus_dir / 'vault' / 'wiki' / 'index.md'}\n"
     )
-    if not wired_any and result.agents:
+    if wired_any and not graph_exists(cwd):
         console.print(
-            "[dim]No agent adapters were auto-wired (none detected or v0.0.2 deferred). "
-            "Run `skopus link` inside a project to wire Claude Code manually.[/dim]"
+            "[bold cyan]Next:[/bold cyan] Open Claude Code and type "
+            "[italic]/graphify .[/italic] to build your code map."
+        )
+    elif not wired_any:
+        console.print(
+            "[bold cyan]Next:[/bold cyan] [italic]cd my-project && skopus link[/italic]"
         )
 
 
@@ -357,36 +299,20 @@ def link(
         help="Which adapter to use. Default: claude-code.",
     ),
 ) -> None:
-    """Wire the Skopus charter + vault into a project's CLAUDE.md."""
+    """Wire Skopus into a project's CLAUDE.md."""
     skopus_dir = resolve_skopus_path()
     if not skopus_dir.exists():
-        console.print(
-            "[red]✗[/red] Skopus is not initialized. Run [italic]skopus init[/italic] first."
-        )
+        console.print("[red]✗[/red] Run [italic]skopus init[/italic] first.")
         raise typer.Exit(code=1)
 
-    # Read adapters.lock to find the vault location from init
-    lock_data = read_adapters_lock(skopus_dir)
-    vault_hint = str(lock_data.get("vault_location") or "~/Vault")
-    vault_dir = resolve_vault_path(vault_hint)
-    if not vault_dir.exists():
-        console.print(
-            f"[yellow]⚠[/yellow]  Vault not found at {vault_dir}. "
-            "Run [italic]skopus init[/italic] first, or specify --vault."
-        )
-        raise typer.Exit(code=1)
-
+    vault_dir = skopus_dir / "vault"
     resolved_project = project_path.resolve()
-    console.print(f"Linking [bold]{resolved_project}[/bold] to Skopus via [bold]{agent}[/bold]...")
+    console.print(f"Linking [bold]{resolved_project.name}[/bold] to Skopus...")
 
     try:
         adapter_impl = get_adapter(agent)
     except KeyError as e:
         console.print(f"[red]✗[/red] {e}")
-        console.print(
-            f"[dim]Available adapters: {', '.join(sorted(ADAPTERS))}. "
-            "More adapters ship in v0.0.2.[/dim]"
-        )
         raise typer.Exit(code=1) from None
 
     result = adapter_impl.install(
@@ -503,9 +429,7 @@ def bench_run(
         console.print("[red]✗[/red] Skopus not initialized. Run `skopus init` first.")
         raise typer.Exit(code=1)
 
-    lock = read_adapters_lock(skopus_dir)
-    vault_dir = resolve_vault_path(str(lock.get("vault_location") or "~/Vault"))
-
+    vault_dir = skopus_dir / "vault"
     driver_impl = b["pick_driver"](driver)
     console.print(
         Panel.fit(
@@ -639,8 +563,7 @@ def doctor() -> None:
 
     # Vault location read from adapters.lock
     lock_data = read_adapters_lock(skopus_dir)
-    vault_hint = str(lock_data.get("vault_location") or "~/Vault")
-    vault_dir = resolve_vault_path(vault_hint)
+    vault_dir = skopus_dir / "vault"
     vault_index = vault_dir / "wiki" / "index.md"
     table.add_row(
         "Vault index",

@@ -1,6 +1,6 @@
-"""Skopus — persistent four-lens context for AI coding assistants.
+"""Skopus — persistent context for AI coding assistants.
 
-Charter, memory, vault, graph. One install, multi-agent, benchmark-driven.
+Install it, run it, your agent remembers you.
 """
 
-__version__ = "0.1.5"
+__version__ = "0.2.0"
