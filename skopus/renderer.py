@@ -66,6 +66,8 @@ VAULT_STATIC = [
     ("vault/.claude/commands/query.md", ".claude/commands/query.md"),
     ("vault/.claude/commands/lint.md", ".claude/commands/lint.md"),
     ("vault/.claude/commands/wiki.md", ".claude/commands/wiki.md"),
+    ("vault/.claude/commands/charter-evolve.md", ".claude/commands/charter-evolve.md"),
+    ("vault/.claude/commands/bench-contribute.md", ".claude/commands/bench-contribute.md"),
 ]
 
 
