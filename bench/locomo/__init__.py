@@ -1,11 +1,23 @@
-"""LoCoMo benchmark wrapper (stub for v0.1.0-alpha).
+"""LoCoMo benchmark wrapper.
 
-LoCoMo (Google 2024) — long conversation memory benchmark. 9 topics, 35+
-turns per session, multi-session scenarios.
+LoCoMo (Snap Research 2024) — long conversation memory benchmark. 10
+multi-session conversations, 1986 questions across 5 categories
+(single-hop, temporal, multi-hop, open-domain, adversarial).
 
-Dataset: https://huggingface.co/datasets/snap-stanford/locomo
-
-v0.1.0-alpha: stub. Full runner planned for v0.1.0 final.
+Dataset: desire2020/locomo-serialized on HuggingFace
+(serialized version of the original adymaharana/locomo dataset).
 """
 
-__all__: list[str] = []
+from bench.locomo.runner import (
+    LoCoMoReport,
+    format_locomo_report,
+    load_locomo,
+    run_locomo,
+)
+
+__all__ = [
+    "LoCoMoReport",
+    "format_locomo_report",
+    "load_locomo",
+    "run_locomo",
+]

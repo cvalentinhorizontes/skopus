@@ -34,10 +34,13 @@ def build_system_prompt(
     configuration expands, from "nothing" (vanilla) to "everything" (full).
     """
     if lens == LensConfig.VANILLA:
-        return (
+        base = (
             "You are a helpful AI coding assistant. Answer the user's question "
             "directly and concisely."
         )
+        if task_hint:
+            return base + f"\n\n## Current Task Context\n{task_hint}"
+        return base
 
     parts: list[str] = [
         "You are a helpful AI coding assistant with persistent context from Skopus.",

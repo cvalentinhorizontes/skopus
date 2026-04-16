@@ -11,6 +11,7 @@ Commands:
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import typer
@@ -67,6 +68,11 @@ app = typer.Typer(
 console = Console()
 
 
+def _slugify_project(name: str) -> str:
+    """Convert a project name to a kebab-case slug for directory naming."""
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+
 def _track_linked_project(skopus_dir: Path, project_path: Path) -> None:
     """Add a project to ~/.skopus/projects.json if not already present."""
     projects_path = skopus_dir / "projects.json"
@@ -80,6 +86,35 @@ def _track_linked_project(skopus_dir: Path, project_path: Path) -> None:
     if project_str not in projects:
         projects.append(project_str)
         projects_path.write_text(json.dumps(projects, indent=2) + "\n")
+
+
+def _init_project_memory(skopus_dir: Path, project_path: Path) -> Path | None:
+    """Create project-scoped memory directory if it doesn't exist.
+
+    Returns the project memory path, or None if it already existed.
+    """
+    project_slug = _slugify_project(project_path.name)
+    project_memory_dir = skopus_dir / "memory" / "projects" / project_slug
+
+    if project_memory_dir.exists():
+        return None
+
+    project_memory_dir.mkdir(parents=True)
+    (project_memory_dir / "feedback").mkdir()
+    (project_memory_dir / "MEMORY.md").write_text(
+        f"# Project Memory — {project_path.name}\n\n"
+        f"Project-scoped corrections and context. Read by agents alongside global memory.\n\n"
+        f"## Feedback\n\n*(populated by /charter-evolve and dreamer)*\n",
+        encoding="utf-8",
+    )
+    (project_memory_dir / "context.md").write_text(
+        f"# Project Context — {project_path.name}\n\n"
+        f"## Stack\n- (edit this)\n\n"
+        f"## Key Commands\n- (edit this)\n\n"
+        f"## Conventions\n- (edit this)\n",
+        encoding="utf-8",
+    )
+    return project_memory_dir
 
 
 @app.command()
@@ -315,6 +350,11 @@ def link(
         console.print(f"[red]✗[/red] {e}")
         raise typer.Exit(code=1) from None
 
+    # Create project-scoped memory
+    project_mem = _init_project_memory(skopus_dir, resolved_project)
+    if project_mem:
+        console.print(f"  Created project memory at [dim]{project_mem}[/dim]")
+
     result = adapter_impl.install(
         charter_path=skopus_dir / "charter",
         vault_path=vault_dir,
@@ -358,6 +398,141 @@ def unlink(
                 projects_path.write_text(json.dumps(projects, indent=2) + "\n")
         except json.JSONDecodeError:
             pass
+
+
+@app.command()
+def update() -> None:
+    """Update Skopus to the latest version from PyPI and re-link all projects."""
+    import subprocess
+    import sys
+
+    console.print("[bold]Updating Skopus...[/bold]")
+    current = __version__
+
+    # Upgrade via pip
+    result = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "--upgrade", "skopus"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        console.print(f"[red]✗[/red] pip upgrade failed:\n{result.stderr}")
+        raise typer.Exit(code=1)
+
+    # Get new version
+    check = subprocess.run(
+        [sys.executable, "-c", "import skopus; print(skopus.__version__)"],
+        capture_output=True,
+        text=True,
+    )
+    new_version = check.stdout.strip() if check.returncode == 0 else "unknown"
+
+    if new_version == current:
+        console.print(f"[green]✓[/green] Already on latest: v{current}")
+    else:
+        console.print(f"[green]✓[/green] Updated: v{current} → v{new_version}")
+
+    # Re-link all projects to update CLAUDE.md blocks
+    skopus_dir = resolve_skopus_path()
+    if not skopus_dir.exists():
+        return
+
+    projects_path = skopus_dir / "projects.json"
+    if projects_path.exists():
+        try:
+            projects: list[str] = json.loads(projects_path.read_text())
+        except json.JSONDecodeError:
+            projects = []
+
+        if projects:
+            console.print(f"\nRe-linking {len(projects)} project(s)...")
+            for project_str in projects:
+                project = Path(project_str)
+                if project.exists():
+                    try:
+                        adapter_impl = get_adapter("claude-code")
+                        adapter_impl.install(
+                            charter_path=skopus_dir / "charter",
+                            vault_path=skopus_dir / "vault",
+                            project_path=project,
+                        )
+                        console.print(f"  [green]✓[/green] {project.name}")
+                    except Exception as e:
+                        console.print(f"  [red]✗[/red] {project.name}: {e}")
+                else:
+                    console.print(f"  [dim]⊘[/dim] {project.name} (not found)")
+
+
+@app.command("uninstall")
+def uninstall_skopus(
+    keep_data: bool = typer.Option(
+        False,
+        "--keep-data",
+        help="Keep ~/.skopus/ directory (only uninstall the package).",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Skip confirmation prompt.",
+    ),
+) -> None:
+    """Uninstall Skopus — remove wiring from all projects and optionally delete all data."""
+    import subprocess
+    import sys
+
+    skopus_dir = resolve_skopus_path()
+
+    if not force:
+        import questionary
+
+        confirm = questionary.confirm(
+            "This will remove Skopus wiring from all linked projects"
+            + ("." if keep_data else " and DELETE ~/.skopus/ (charter, memory, vault)."),
+            default=False,
+        ).ask()
+        if not confirm:
+            console.print("[dim]Cancelled.[/dim]")
+            raise typer.Exit(code=0)
+
+    # Unlink all projects
+    if skopus_dir.exists():
+        projects_path = skopus_dir / "projects.json"
+        if projects_path.exists():
+            try:
+                projects: list[str] = json.loads(projects_path.read_text())
+            except json.JSONDecodeError:
+                projects = []
+
+            for project_str in projects:
+                project = Path(project_str)
+                if project.exists():
+                    try:
+                        adapter_impl = get_adapter("claude-code")
+                        adapter_impl.uninstall(project_path=project)
+                        console.print(f"  [green]✓[/green] Unlinked {project.name}")
+                    except (OSError, KeyError, ValueError):
+                        console.print(f"  [dim]⊘[/dim] {project.name} (skip)")
+
+        # Delete data unless --keep-data
+        if not keep_data:
+            import shutil
+
+            shutil.rmtree(skopus_dir)
+            console.print(f"[green]✓[/green] Deleted {skopus_dir}")
+        else:
+            console.print(f"[dim]Kept {skopus_dir}[/dim]")
+
+    # Uninstall pip package
+    result = subprocess.run(
+        [sys.executable, "-m", "pip", "uninstall", "skopus", "-y"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        console.print("[green]✓[/green] Skopus uninstalled.")
+    else:
+        console.print(f"[yellow]⚠[/yellow] pip uninstall: {result.stderr.strip()}")
 
 
 charter_app = typer.Typer(
@@ -623,4 +798,76 @@ def doctor() -> None:
             console.print(
                 "\n[dim]No projects linked yet. "
                 "Run [italic]skopus link[/italic] inside a project directory.[/dim]"
+            )
+
+
+@app.command()
+def audit(
+    fix: bool = typer.Option(
+        False,
+        "--fix",
+        help="Auto-fix issues (add missing index entries, remove dangling ones).",
+    ),
+) -> None:
+    """Audit memory health — index sync and scope tags."""
+    from skopus.audit import run_audit
+
+    skopus_dir = resolve_skopus_path()
+    if not skopus_dir.exists():
+        console.print(
+            "[red]✗[/red] Skopus is not initialized. Run [italic]skopus init[/italic] first."
+        )
+        raise typer.Exit(code=1)
+
+    mode = "fix" if fix else "report"
+    console.print(
+        Panel.fit(
+            f"[bold]Memory Audit[/bold] — mode: {mode}",
+            title="skopus audit",
+            border_style="cyan",
+        )
+    )
+
+    report = run_audit(skopus_dir, fix=fix)
+
+    # Index sync
+    missing = report["sync"]["missing_from_index"]
+    dangling = report["sync"]["dangling_entries"]
+
+    if missing or dangling:
+        console.print("\n[bold]Index sync:[/bold]")
+        for f in missing:
+            action = "[green]added[/green]" if fix else "[yellow]missing from index[/yellow]"
+            console.print(f"  {action}  feedback/{f}")
+        for f in dangling:
+            action = "[green]removed[/green]" if fix else "[yellow]dangling entry[/yellow]"
+            console.print(f"  {action}  feedback/{f}")
+    else:
+        console.print("\n[green]✓[/green] Index sync: clean")
+
+    # Scope tags
+    scope_missing = report["scope"]
+    if scope_missing:
+        console.print("\n[bold]Missing scope tags:[/bold]")
+        for f in scope_missing:
+            console.print(f"  [yellow]⚠[/yellow]  feedback/{f}")
+    else:
+        console.print("[green]✓[/green] Scope tags: all present")
+
+    # Summary
+    if report["clean"]:
+        console.print("\n[bold green]All checks passed.[/bold green]")
+    else:
+        issues = len(missing) + len(dangling) + len(scope_missing)
+        if fix:
+            fixed = len(missing) + len(dangling)
+            remaining = len(scope_missing)
+            console.print(
+                f"\n[bold]Fixed {fixed} issue(s).[/bold]"
+                + (f" {remaining} scope tag(s) need manual attention." if remaining else "")
+            )
+        else:
+            console.print(
+                f"\n[bold]{issues} issue(s) found.[/bold] "
+                "Run [italic]skopus audit --fix[/italic] to auto-fix index issues."
             )

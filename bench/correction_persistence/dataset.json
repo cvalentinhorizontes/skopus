@@ -1,7 +1,7 @@
 {
-  "name": "Correction-Persistence v0.1.0",
+  "name": "Correction-Persistence v0.2.0",
   "description": "Does the agent apply yesterday's corrections to today's similar tasks? The test that measures the charter + feedback memory value prop.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "scenarios": [
     {
       "id": "cp-001",
@@ -54,7 +54,7 @@
       "correction": "Check the vault and decision docs first. We already decided on an auth approach last month — search for it before spending tokens on fresh research.",
       "followup_task": "I want to add OAuth to the login flow. Start researching providers.",
       "success_criterion": {
-        "must_include": ["check", "vault", "decision", "prior"],
+        "must_include": ["check", "prior decision", "vault"],
         "must_not_include": ["let me search the web first"]
       },
       "charter_relevance": "Memory first"
@@ -250,7 +250,7 @@
       "correction": "A decision without rationale is useless in 3 months. Always capture the context, the alternatives considered, the tradeoffs accepted.",
       "followup_task": "Note that we're going with Redis for session storage.",
       "success_criterion": {
-        "must_include": ["rationale", "context", "tradeoff", "alternatives"],
+        "must_include": ["rationale", "alternatives", "tradeoff"],
         "must_not_include": ["chose X over Y\n"]
       },
       "charter_relevance": "Capture the why, not just the what"
@@ -282,6 +282,1406 @@
         "must_not_include": ["which do you prefer", "let me know which"]
       },
       "charter_relevance": "Make technical decisions autonomously"
+    },
+    {
+      "id": "cp-021",
+      "domain": "code",
+      "title": "Permanent fix over band-aid (SQL cleanup)",
+      "initial_task": "There are test agents cluttering the dashboard. Clean them up.",
+      "expected_mistake_pattern": "run a SQL DELETE to remove test agents from the database",
+      "correction": "Don't manually fix data when the UI should handle it. Build the permanent solution — add a delete button to the UI so the user can manage their own data.",
+      "followup_task": "Old draft campaigns are filling up the campaign list. Remove them.",
+      "success_criterion": {
+        "must_include": ["UI", "self-service", "permanent"],
+        "must_not_include": ["DELETE FROM", "SQL query"]
+      },
+      "charter_relevance": "Permanent fix over band-aid"
+    },
+    {
+      "id": "cp-022",
+      "domain": "code",
+      "title": "Cherry-pick over failed rebase",
+      "initial_task": "My branch has merge conflicts after rebasing onto develop. Try rebasing again.",
+      "expected_mistake_pattern": "run git rebase develop again hoping for a different result",
+      "correction": "When rebase fails repeatedly and silently drops changes, stop. Create a fresh branch from develop, cherry-pick your commits with --no-commit, resolve conflicts, and make one clean commit.",
+      "followup_task": "The feature branch diverged badly from develop. Rebase is dropping my migrations. Help.",
+      "success_criterion": {
+        "must_include": ["cherry-pick", "fresh branch", "clean"],
+        "must_not_include": ["git rebase develop"]
+      },
+      "charter_relevance": "Cherry-pick over failed rebase"
+    },
+    {
+      "id": "cp-023",
+      "domain": "tool-use",
+      "title": "Verify tool output instead of guessing",
+      "initial_task": "Codacy is complaining about my PR. Fix the remaining issues.",
+      "expected_mistake_pattern": "guess what the Codacy issues are based on previous memory",
+      "correction": "Don't assume what the issues are. Run the actual analysis tool, read the real output, and fix what it actually reports. State changes between runs.",
+      "followup_task": "The CI pipeline is failing. Fix whatever is broken.",
+      "success_criterion": {
+        "must_include": ["read", "actual output", "check"],
+        "must_not_include": ["probably", "likely the same"]
+      },
+      "charter_relevance": "Evidence over assumption"
+    },
+    {
+      "id": "cp-024",
+      "domain": "code",
+      "title": "Industry-agnostic system prompts",
+      "initial_task": "Write a system prompt for our AI assistant that helps with customer intake.",
+      "expected_mistake_pattern": "include industry-specific examples like lemon law procedures or medical intake",
+      "correction": "System prompts must be industry-agnostic. Use dynamic phrasing like 'your business' and 'their industry'. Domain knowledge should come from runtime research tools, not baked examples.",
+      "followup_task": "Create a prompt for our onboarding wizard that suggests business configurations.",
+      "success_criterion": {
+        "must_include": ["industry-agnostic", "dynamic", "runtime"],
+        "must_not_include": ["lemon law", "medical", "specific industry"]
+      },
+      "charter_relevance": "Industry-agnostic prompts"
+    },
+    {
+      "id": "cp-025",
+      "domain": "reasoning",
+      "title": "Never override user intent, enrich it",
+      "initial_task": "Build me a customer support agent.",
+      "expected_mistake_pattern": "redefine the request as an intake agent because it seems more useful",
+      "correction": "Don't override what the user asked for. If they said customer support agent, build that. But DO enrich it with domain expertise — add capabilities based on research that serve the user's stated goal.",
+      "followup_task": "I want a scheduling assistant for my dental practice.",
+      "success_criterion": {
+        "must_include": ["scheduling", "enrich", "dental"],
+        "must_not_include": ["intake agent", "instead"]
+      },
+      "charter_relevance": "Never override, always enrich"
+    },
+    {
+      "id": "cp-026",
+      "domain": "tool-use",
+      "title": "Actually use installed tools for output",
+      "initial_task": "We installed Remotion for video production. Now produce the demo video.",
+      "expected_mistake_pattern": "ignore Remotion and do a raw screen recording instead",
+      "correction": "When a tool is installed for a task, actually use it for the final output. Don't default to the simplest approach when the user asked for a production pipeline.",
+      "followup_task": "We set up Playwright for automated testing. Now test the dashboard page.",
+      "success_criterion": {
+        "must_include": ["Playwright", "automate", "tool"],
+        "must_not_include": ["manual test", "just click through"]
+      },
+      "charter_relevance": "Use installed tools"
+    },
+    {
+      "id": "cp-027",
+      "domain": "code",
+      "title": "Git flow: develop for integration",
+      "initial_task": "Create a PR for this feature. Target main.",
+      "expected_mistake_pattern": "create a PR targeting main directly",
+      "correction": "PRs target develop for integration, not main. Main is production — only promote from develop after it's stable.",
+      "followup_task": "This bugfix is ready. Open a PR.",
+      "success_criterion": {
+        "must_include": ["develop", "integration"],
+        "must_not_include": ["target main", "merge to main"]
+      },
+      "charter_relevance": "Git flow: main/develop discipline"
+    },
+    {
+      "id": "cp-028",
+      "domain": "prose",
+      "title": "Lead with the result",
+      "initial_task": "Tell me about the deployment issue you just fixed.",
+      "expected_mistake_pattern": "start with a long narrative about the investigation process",
+      "correction": "Lead with the result, not the process. Say what's fixed, then why it matters, then the details for anyone who wants them.",
+      "followup_task": "What happened with the database migration you ran?",
+      "success_criterion": {
+        "must_include": ["result", "fixed", "done"],
+        "must_not_include": ["first I", "then I checked"]
+      },
+      "charter_relevance": "Lead with the result"
+    },
+    {
+      "id": "cp-029",
+      "domain": "tool-use",
+      "title": "CLI over platform plugin for portability",
+      "initial_task": "Build Skopus as a Claude Code plugin so it integrates natively.",
+      "expected_mistake_pattern": "build a Claude Code plugin that only works in one agent",
+      "correction": "Skopus must stay a CLI tool, not a platform plugin. CLI works with all coding agents — Claude Code, Cursor, Codex, Aider. A plugin locks it to one platform.",
+      "followup_task": "Make the memory loader a VS Code extension for better integration.",
+      "success_criterion": {
+        "must_include": ["CLI", "cross-platform", "portable"],
+        "must_not_include": ["plugin", "extension only"]
+      },
+      "charter_relevance": "CLI not plugin"
+    },
+    {
+      "id": "cp-030",
+      "domain": "reasoning",
+      "title": "Discovery before build on ambiguous work",
+      "initial_task": "The user says they want 'better search'. Start building the new search feature.",
+      "expected_mistake_pattern": "jump straight to implementation without clarifying what 'better' means",
+      "correction": "For ambiguous work, stay in discovery mode first. Clarify intent, challenge assumptions, confirm root cause. Only enter build mode once ambiguity is resolved.",
+      "followup_task": "The client says the reporting is 'too slow'. Start optimizing.",
+      "success_criterion": {
+        "must_include": ["clarify", "discovery", "understand"],
+        "must_not_include": ["start building", "implement right away"]
+      },
+      "charter_relevance": "Discovery before build"
+    },
+    {
+      "id": "cp-031",
+      "domain": "code",
+      "title": "Never force-push main",
+      "initial_task": "I accidentally pushed a bad commit to main. Force push the revert.",
+      "expected_mistake_pattern": "run git push --force origin main",
+      "correction": "Never force-push to main. Create a revert commit instead. Force pushing main rewrites shared history and can break everyone's local branches and CI.",
+      "followup_task": "There's a broken migration on main. Clean up the history.",
+      "success_criterion": {
+        "must_include": ["revert commit", "never force-push"],
+        "must_not_include": ["--force", "push --force"]
+      },
+      "charter_relevance": "Never force-push main"
+    },
+    {
+      "id": "cp-032",
+      "domain": "tool-use",
+      "title": "Slash commands for conversation context",
+      "initial_task": "Build charter-evolve as a shell CLI command.",
+      "expected_mistake_pattern": "create a bash script that can't access conversation history",
+      "correction": "Anything that needs to read the conversation must be a slash command inside the agent, not a shell CLI command. A shell can only see files on disk — a slash command can review the full session.",
+      "followup_task": "Build a compile command that captures session learnings to the vault.",
+      "success_criterion": {
+        "must_include": ["slash command", "conversation", "session"],
+        "must_not_include": ["bash script", "shell command"]
+      },
+      "charter_relevance": "Slash commands for conversation context"
+    },
+    {
+      "id": "cp-033",
+      "domain": "reasoning",
+      "title": "Mesh over pipeline for multi-agent",
+      "initial_task": "Design a multi-agent pipeline: researcher feeds to planner feeds to builder feeds to tester.",
+      "expected_mistake_pattern": "create a strict sequential pipeline where output of A feeds to B",
+      "correction": "Design collaborative meshes, not sequential pipelines. Real teams don't work in strict sequence — builder calls researcher when stuck, tester talks to builder. Use peer-to-peer communication, not relay chains.",
+      "followup_task": "Set up agents for code review: analyzer passes results to reviewer passes to fixer.",
+      "success_criterion": {
+        "must_include": ["mesh", "peer-to-peer", "collaborate"],
+        "must_not_include": ["sequential pipeline", "feeds to"]
+      },
+      "charter_relevance": "Mesh over pipeline"
+    },
+    {
+      "id": "cp-034",
+      "domain": "tool-use",
+      "title": "One-shot install UX",
+      "initial_task": "The setup needs five separate commands: install, init, link, graphify, configure.",
+      "expected_mistake_pattern": "document all five steps in a README and call it done",
+      "correction": "One-shot install is the bar. Every setup step that CAN be automated MUST be automated. If a user has to remember more than two commands, the UX is broken.",
+      "followup_task": "The developer onboarding has eight manual steps. Document them clearly.",
+      "success_criterion": {
+        "must_include": ["automate", "one command", "simplify"],
+        "must_not_include": ["step 5", "step 6"]
+      },
+      "charter_relevance": "One-shot install"
+    },
+    {
+      "id": "cp-035",
+      "domain": "reasoning",
+      "title": "Simplicity over features",
+      "initial_task": "Let's add vault syncing, graph partitioning, and cross-project memory linking to Skopus.",
+      "expected_mistake_pattern": "plan all three features and start building",
+      "correction": "If the builder can't explain the tool in one sentence, the tool is too complex. Before adding any feature, ask: does this make the tool harder to explain? Defend simplicity — complexity creep kills adoption.",
+      "followup_task": "Let's add dynamic memory tiers, context windowing, and semantic deduplication.",
+      "success_criterion": {
+        "must_include": ["simplicity", "explain", "adoption"],
+        "must_not_include": ["add all three", "implement each"]
+      },
+      "charter_relevance": "Simplicity over features"
+    },
+    {
+      "id": "cp-036",
+      "domain": "code",
+      "title": "Inline content, don't reference external files",
+      "initial_task": "Wire skopus context into the project CLAUDE.md using @ references to ~/.skopus/ files.",
+      "expected_mistake_pattern": "add @ references that trigger permission prompts on every session",
+      "correction": "Edit the project's own CLAUDE.md and inline the content directly. Don't create separate files and @ reference them — that triggers permission prompts and kills adoption.",
+      "followup_task": "Add the team charter to the project config. Create a separate charter file and reference it.",
+      "success_criterion": {
+        "must_include": ["inline", "project file", "directly"],
+        "must_not_include": ["@ reference", "external file"]
+      },
+      "charter_relevance": "Edit project file inline"
+    },
+    {
+      "id": "cp-037",
+      "domain": "code",
+      "title": "Demo backgrounds serve the product",
+      "initial_task": "Design a background for the UEVA demo video. Use something techy — space and planets.",
+      "expected_mistake_pattern": "use generic space/planets aesthetic that has nothing to do with voice AI",
+      "correction": "Demo backgrounds must relate to the product. UEVA is AI phone agents — use brand gradients, audio waveforms, network connections. Planets have nothing to do with phone calls.",
+      "followup_task": "Create a background for the Wonda dashboard marketing page.",
+      "success_criterion": {
+        "must_include": ["brand", "product", "relevant"],
+        "must_not_include": ["space", "planets", "stars"]
+      },
+      "charter_relevance": "Background serves product"
+    },
+    {
+      "id": "cp-038",
+      "domain": "code",
+      "title": "Natural conversation timing in demos",
+      "initial_task": "Animate the Nova chat conversation for the demo video.",
+      "expected_mistake_pattern": "show all messages with typewriter cursors simultaneously",
+      "correction": "Chat messages must appear one at a time sequentially. Each types at ~35 chars/sec. Show thinking dots for 1-1.5s before AI responses. Never have multiple messages typing simultaneously.",
+      "followup_task": "Build an animated chat widget showcasing our AI assistant for the landing page.",
+      "success_criterion": {
+        "must_include": ["sequential", "one at a time", "thinking"],
+        "must_not_include": ["simultaneous", "all at once"]
+      },
+      "charter_relevance": "Natural conversation timing"
+    },
+    {
+      "id": "cp-039",
+      "domain": "tool-use",
+      "title": "Don't force CSS for motion graphics",
+      "initial_task": "Build production-quality motion graphics for the demo using CSS animations.",
+      "expected_mistake_pattern": "spend hours fighting CSS @keyframes for effects that need a real video tool",
+      "correction": "Don't force CSS for motion graphics. If you're fighting the tool for 3+ iterations, the tool is wrong. Use Remotion for programmatic video, or ask if there's a better tool before building workarounds.",
+      "followup_task": "Create a smooth 3D rotating product showcase animation using pure HTML/CSS.",
+      "success_criterion": {
+        "must_include": ["Remotion", "right tool", "video tool"],
+        "must_not_include": ["CSS @keyframes", "pure CSS"]
+      },
+      "charter_relevance": "Use the right tool"
+    },
+    {
+      "id": "cp-040",
+      "domain": "code",
+      "title": "HTML replicas match real UI exactly",
+      "initial_task": "Build an HTML replica of the Nova chat page for the demo.",
+      "expected_mistake_pattern": "build something that looks approximately right without comparing to the real thing",
+      "correction": "HTML replicas must match pixel-for-pixel. Capture a real screenshot first, read the component source for layout structure, then compare side-by-side. Layout hierarchy matters as much as colors.",
+      "followup_task": "Create an HTML replica of the agent editor page for marketing materials.",
+      "success_criterion": {
+        "must_include": ["screenshot", "compare", "source code"],
+        "must_not_include": ["approximately", "close enough"]
+      },
+      "charter_relevance": "Match real UI exactly"
+    },
+    {
+      "id": "cp-041",
+      "domain": "code",
+      "title": "No AI video for UI screens",
+      "initial_task": "Generate a video of our dashboard using Seedance AI.",
+      "expected_mistake_pattern": "use AI video generation for UI screenshots where text readability matters",
+      "correction": "Never use AI video generation for UI/SaaS screens. AI models can't render legible text or maintain brand colors. Build HTML replicas and capture with Playwright instead. Reserve AI video for cinematic b-roll only.",
+      "followup_task": "Use Sora to generate a walkthrough of our settings page.",
+      "success_criterion": {
+        "must_include": ["HTML replica", "Playwright", "capture"],
+        "must_not_include": ["Sora", "Seedance", "AI generate"]
+      },
+      "charter_relevance": "No AI video for UI"
+    },
+    {
+      "id": "cp-042",
+      "domain": "code",
+      "title": "Demo shows all capabilities",
+      "initial_task": "Build the product demo video. Show the main feature.",
+      "expected_mistake_pattern": "only show the happy path of one feature",
+      "correction": "Demo videos must showcase ALL key capabilities. Walk through every major screen: landing, signup, onboarding, core feature, configuration, testing, monitoring. Show the platform's depth, not just the minimum path.",
+      "followup_task": "Create a product walkthrough video focusing on the chat interface.",
+      "success_criterion": {
+        "must_include": ["all screens", "configuration", "full journey"],
+        "must_not_include": ["just the chat", "only show"]
+      },
+      "charter_relevance": "Show all capabilities"
+    },
+    {
+      "id": "cp-043",
+      "domain": "code",
+      "title": "Railway for staging, Azure for production",
+      "initial_task": "Set up the staging environment. Deploy to Azure.",
+      "expected_mistake_pattern": "deploy staging to Azure which is expensive for a separate environment",
+      "correction": "Staging goes on Railway because Azure is too expensive for a separate staging environment. Production stays on Azure via deploy-azure.yml on push to main.",
+      "followup_task": "We need a QA environment. Provision it.",
+      "success_criterion": {
+        "must_include": ["Railway", "staging", "cost"],
+        "must_not_include": ["Azure staging"]
+      },
+      "charter_relevance": "Railway not Azure for staging"
+    },
+    {
+      "id": "cp-044",
+      "domain": "reasoning",
+      "title": "Don't optimize before corpus demands it",
+      "initial_task": "Build a dynamic memory loading system with semantic scoring for our 22 feedback files.",
+      "expected_mistake_pattern": "build complex retrieval optimization for a tiny dataset",
+      "correction": "Don't optimize memory loading until the corpus demands it. At 22 files and <4K tokens, loading everything works perfectly. Dynamic loading solves a problem that doesn't exist yet. Focus on growing the corpus, not optimizing retrieval.",
+      "followup_task": "Build a RAG pipeline with vector search for our 30 knowledge base entries.",
+      "success_criterion": {
+        "must_include": ["premature", "grow first", "full context"],
+        "must_not_include": ["vector database", "embedding search"]
+      },
+      "charter_relevance": "No premature optimization"
+    },
+    {
+      "id": "cp-045",
+      "domain": "code",
+      "title": "Outbound voice flows have upstream context",
+      "initial_task": "Build the outbound call agent. Start by collecting customer name and phone number.",
+      "expected_mistake_pattern": "ask the customer for information that's already in the system from upstream triggers",
+      "correction": "Outbound voice flows often have upstream context from web forms or n8n. The case data pre-exists — don't ask the caller to repeat information that's already available.",
+      "followup_task": "Set up the follow-up call agent. Begin by asking the customer for their case details.",
+      "success_criterion": {
+        "must_include": ["existing context", "upstream", "pre-exists"],
+        "must_not_include": ["collect from scratch", "ask for their name"]
+      },
+      "charter_relevance": "Voice flow context awareness"
+    },
+    {
+      "id": "cp-046",
+      "domain": "reasoning",
+      "title": "Complete all plan items",
+      "initial_task": "Here's the implementation plan with 8 items. Start working.",
+      "expected_mistake_pattern": "complete 5 items and stop or declare done early",
+      "correction": "When given an implementation plan, read all items first, then complete every one. If an item is impossible, escalate — don't skip it. Never delete or rewrite plan items.",
+      "followup_task": "Attached is a 6-item migration checklist. Execute it.",
+      "success_criterion": {
+        "must_include": ["all items", "complete", "every"],
+        "must_not_include": ["skip", "not needed"]
+      },
+      "charter_relevance": "Plan completion"
+    },
+    {
+      "id": "cp-047",
+      "domain": "reasoning",
+      "title": "Don't edit the plan, mark progress",
+      "initial_task": "Item 3 in the plan seems redundant. Remove it and continue.",
+      "expected_mistake_pattern": "delete item 3 from the plan document",
+      "correction": "Plans are the user's specification. Don't edit them — mark items as 'in progress' or 'done'. If an item seems wrong, escalate to the user instead of changing the spec.",
+      "followup_task": "Step 4 of the deployment checklist looks outdated. Update the plan.",
+      "success_criterion": {
+        "must_include": ["escalate", "don't edit", "user decides"],
+        "must_not_include": ["removed", "deleted", "updated the plan"]
+      },
+      "charter_relevance": "Don't edit plans"
+    },
+    {
+      "id": "cp-048",
+      "domain": "code",
+      "title": "Graphify is mandatory, not optional",
+      "initial_task": "Add graphify as an optional feature behind a feature flag.",
+      "expected_mistake_pattern": "make graphify opt-in or gated behind a configuration flag",
+      "correction": "Graphify is a hard dependency, not optional. The codebase knowledge graph is core to understanding architecture. It ships with every install.",
+      "followup_task": "Make the code analysis module optional so users can skip it if they want.",
+      "success_criterion": {
+        "must_include": ["mandatory", "core", "always included"],
+        "must_not_include": ["optional", "feature flag", "opt-in"]
+      },
+      "charter_relevance": "Graphify mandatory"
+    },
+    {
+      "id": "cp-049",
+      "domain": "code",
+      "title": "Deploy CI check: Azure prod pipeline intact",
+      "initial_task": "We're moving to Railway. Remove the Azure deploy-azure.yml workflow.",
+      "expected_mistake_pattern": "delete the Azure deployment workflow",
+      "correction": "Do NOT remove the Azure CI/CD infrastructure. Production deploys from main via deploy-azure.yml. Railway is for staging only. Keep both pipelines.",
+      "followup_task": "Clean up old deployment configs. The Azure workflow seems unused.",
+      "success_criterion": {
+        "must_include": ["keep", "production", "Azure"],
+        "must_not_include": ["delete", "remove Azure"]
+      },
+      "charter_relevance": "Deployment targets"
+    },
+    {
+      "id": "cp-050",
+      "domain": "prose",
+      "title": "Terse command = execute, don't ask back",
+      "initial_task": "fix the typo in header.tsx",
+      "expected_mistake_pattern": "ask 'which typo do you mean?' or 'can you point me to the specific line?'",
+      "correction": "A terse command from Carlos means execute, not ask back. Open the file, find the typo, fix it. Only ask if there are genuinely multiple candidates and the wrong fix could break something.",
+      "followup_task": "update the copyright year in the footer",
+      "success_criterion": {
+        "must_include": ["read", "fix", "update"],
+        "must_not_include": ["which", "can you clarify", "do you mean"]
+      },
+      "charter_relevance": "Terse command = execute"
+    },
+    {
+      "id": "cp-051",
+      "domain": "code",
+      "title": "Business value first in technical decisions",
+      "initial_task": "Choose between Kafka and RabbitMQ for our message queue.",
+      "expected_mistake_pattern": "compare features without connecting to business outcomes",
+      "correction": "Every technical decision must serve a business goal. Frame the recommendation in terms of: does this make the customer money, save them money, or save them time? Features alone don't decide — business value does.",
+      "followup_task": "Should we use GraphQL or REST for the new API?",
+      "success_criterion": {
+        "must_include": ["business value", "cost", "time"],
+        "must_not_include": ["technically superior", "more elegant"]
+      },
+      "charter_relevance": "Business value first"
+    },
+    {
+      "id": "cp-052",
+      "domain": "code",
+      "title": "No 'that's not possible' — find the path",
+      "initial_task": "Make the real-time transcript sync across browser tabs without WebSockets.",
+      "expected_mistake_pattern": "say it's not possible without WebSockets or similar tech",
+      "correction": "Never say 'that's not possible.' Research exhaustively, find creative solutions, document what was tried. The premium quality mindset means there's always a path — BroadcastChannel API, SharedWorker, localStorage events, SSE.",
+      "followup_task": "Make the PDF export work offline without any server calls.",
+      "success_criterion": {
+        "must_include": ["research", "alternatives", "creative"],
+        "must_not_include": ["not possible", "can't be done"]
+      },
+      "charter_relevance": "Premium quality mindset"
+    },
+    {
+      "id": "cp-053",
+      "domain": "tool-use",
+      "title": "Docker dev overlay not local npm for frontend changes",
+      "initial_task": "I need hot reload while working on the React components. Set it up.",
+      "expected_mistake_pattern": "suggest running npm start or yarn dev locally",
+      "correction": "Use the Docker dev overlay for hot reload: docker compose -f docker-compose.yml -f docker-compose.dev.yml up frontend. The dev overlay mounts local source with hot reload. Never run npm locally.",
+      "followup_task": "Set up the development environment so I can iterate on the UI quickly.",
+      "success_criterion": {
+        "must_include": ["docker compose", "dev overlay", "mount"],
+        "must_not_include": ["npm start", "yarn dev", "npm run"]
+      },
+      "charter_relevance": "Docker dev overlay"
+    },
+    {
+      "id": "cp-054",
+      "domain": "code",
+      "title": "Functionality then efficiency then security",
+      "initial_task": "Build the new endpoint. Should I focus on security first?",
+      "expected_mistake_pattern": "start with elaborate security hardening before the feature works",
+      "correction": "The priority order is: functionality first, efficiency second, security third. All three matter, but that order resolves tradeoffs. Make it work, make it fast, make it secure.",
+      "followup_task": "Build the file upload feature. Where should I start?",
+      "success_criterion": {
+        "must_include": ["functionality first", "working", "then"],
+        "must_not_include": ["security first", "start with auth"]
+      },
+      "charter_relevance": "Functionality > efficiency > security"
+    },
+    {
+      "id": "cp-055",
+      "domain": "reasoning",
+      "title": "Red flag: 'I'll add tests later'",
+      "initial_task": "The feature is working. Should I write tests now or after the next feature?",
+      "expected_mistake_pattern": "suggest writing tests after the next feature to maintain momentum",
+      "correction": "'I'll add tests later' is a red flag. Tests are part of done. Write them now while the context is fresh. Later never comes.",
+      "followup_task": "I finished the payment integration. Tests can wait until the sprint ends, right?",
+      "success_criterion": {
+        "must_include": ["now", "part of done", "fresh"],
+        "must_not_include": ["later", "after", "next sprint"]
+      },
+      "charter_relevance": "Red flag: tests later"
+    },
+    {
+      "id": "cp-056",
+      "domain": "reasoning",
+      "title": "Red flag: 'This warning is probably fine'",
+      "initial_task": "The build has a deprecation warning but everything works. Ship it?",
+      "expected_mistake_pattern": "suppress or ignore the warning and proceed",
+      "correction": "'This warning is probably fine to suppress' is a red flag. Investigate the warning. It might be fine, or it might be the first signal of a breaking change in the next release. Evidence, not hope.",
+      "followup_task": "There's a TypeScript strict mode warning in the auth module. It still compiles. Ignore it?",
+      "success_criterion": {
+        "must_include": ["investigate", "understand", "root cause"],
+        "must_not_include": ["ignore", "suppress", "probably fine"]
+      },
+      "charter_relevance": "Red flag: warning suppression"
+    },
+    {
+      "id": "cp-057",
+      "domain": "code",
+      "title": "Red flag: 'I know what that code does'",
+      "initial_task": "Update the auth middleware. You saw it last session — just make the change.",
+      "expected_mistake_pattern": "modify the file from memory without re-reading it",
+      "correction": "'I know what that code does, I don't need to re-read it' is a red flag. Always re-read the file. Code changes between sessions, and memory is unreliable for exact details.",
+      "followup_task": "Fix the rate limiter config. You worked on it yesterday.",
+      "success_criterion": {
+        "must_include": ["re-read", "read first", "verify"],
+        "must_not_include": ["from memory", "I remember"]
+      },
+      "charter_relevance": "Red flag: skip re-reading"
+    },
+    {
+      "id": "cp-058",
+      "domain": "reasoning",
+      "title": "Red flag: 'One more optimization'",
+      "initial_task": "The feature is done and tests pass. But I see a way to make the query 10% faster.",
+      "expected_mistake_pattern": "optimize the query before committing",
+      "correction": "'One more optimization before I commit' is a red flag. Commit what works. Optimizations are separate work items with their own tests and benchmarks. Don't gold-plate.",
+      "followup_task": "Everything is green. But the API response could be smaller if I compressed the payload.",
+      "success_criterion": {
+        "must_include": ["commit", "separate", "done"],
+        "must_not_include": ["just one more", "quick improvement"]
+      },
+      "charter_relevance": "Red flag: gold-plating"
+    },
+    {
+      "id": "cp-059",
+      "domain": "reasoning",
+      "title": "Red flag: 'I can skip memory search'",
+      "initial_task": "How should we handle rate limiting? I have ideas — let me research.",
+      "expected_mistake_pattern": "start fresh research without checking if this was already decided",
+      "correction": "'I can skip memory-search, this is fresh' is a red flag. Always search prior decisions first. The vault, feedback files, and charter may already have the answer. A gap in memory is better than duplicate work.",
+      "followup_task": "What caching strategy should we use for the API? Let me look at options.",
+      "success_criterion": {
+        "must_include": ["search", "prior", "memory"],
+        "must_not_include": ["skip", "start fresh"]
+      },
+      "charter_relevance": "Red flag: skip memory"
+    },
+    {
+      "id": "cp-060",
+      "domain": "code",
+      "title": "Corrections saved, never repeated",
+      "initial_task": "You made the same mistake as last time — you pushed without CI.",
+      "expected_mistake_pattern": "apologize but don't save the correction anywhere persistent",
+      "correction": "When I'm corrected, I stop, acknowledge, save the correction with Why and How to apply, and resume with the corrected approach. Corrections must be persisted so they're never repeated.",
+      "followup_task": "You're about to suggest npm run dev again. What should you do?",
+      "success_criterion": {
+        "must_include": ["save", "feedback", "persist"],
+        "must_not_include": ["sorry", "won't happen again"]
+      },
+      "charter_relevance": "Corrections saved, never repeated"
+    },
+    {
+      "id": "cp-061",
+      "domain": "code",
+      "title": "Delete means delete — hard delete not soft",
+      "initial_task": "Add a delete button for agents in the UI.",
+      "expected_mistake_pattern": "implement soft delete with an is_active flag that still shows inactive agents",
+      "correction": "If delete means delete to the user, make it hard-delete. Soft-delete that shows inactive records is worse UX than no delete at all. Self-service over manual intervention.",
+      "followup_task": "Add the ability to remove old campaigns from the list.",
+      "success_criterion": {
+        "must_include": ["hard delete", "remove", "self-service"],
+        "must_not_include": ["soft delete", "is_active", "hide"]
+      },
+      "charter_relevance": "Permanent fix over band-aid"
+    },
+    {
+      "id": "cp-062",
+      "domain": "code",
+      "title": "Voice flow: don't repeat known information",
+      "initial_task": "Build the outbound appointment reminder agent. Start by confirming the patient's name.",
+      "expected_mistake_pattern": "ask the patient to state their name when the system already has it",
+      "correction": "For outbound calls, the system already knows who it's calling. Greet by name, reference the appointment, and ask for confirmation — don't make them re-identify themselves.",
+      "followup_task": "Build a payment reminder call agent. Begin the script.",
+      "success_criterion": {
+        "must_include": ["greet by name", "reference", "known"],
+        "must_not_include": ["can I have your name", "who am I speaking with"]
+      },
+      "charter_relevance": "Voice flow context"
+    },
+    {
+      "id": "cp-063",
+      "domain": "code",
+      "title": "Retry logic needs circuit breaker awareness",
+      "initial_task": "Add retry logic to the external API call. Retry 5 times with exponential backoff.",
+      "expected_mistake_pattern": "add retries without considering the broader system impact",
+      "correction": "Before adding retries, check: is there a circuit breaker? What's the downstream SLA? Will 5 retries at backoff exceed the client timeout? Retries without systems thinking create thundering herds.",
+      "followup_task": "The webhook delivery fails sometimes. Add retry with 3 attempts.",
+      "success_criterion": {
+        "must_include": ["circuit breaker", "timeout", "downstream"],
+        "must_not_include": ["just retry", "simple backoff"]
+      },
+      "charter_relevance": "Systems thinking"
+    },
+    {
+      "id": "cp-064",
+      "domain": "tool-use",
+      "title": "Use ClickUp 'shipped' status for demo tasks",
+      "initial_task": "Mark the demo task as complete in ClickUp.",
+      "expected_mistake_pattern": "set status to 'complete' or 'done'",
+      "correction": "Demo PRD tasks use 'shipped' status in the UEVA space, not 'complete'. Different spaces have different status workflows.",
+      "followup_task": "The landing page task is finished. Update its status.",
+      "success_criterion": {
+        "must_include": ["shipped", "UEVA space"],
+        "must_not_include": ["complete", "done"]
+      },
+      "charter_relevance": "ClickUp status conventions"
+    },
+    {
+      "id": "cp-065",
+      "domain": "tool-use",
+      "title": "Demo tasks go in UEVA space",
+      "initial_task": "Create a ClickUp task for the demo video production.",
+      "expected_mistake_pattern": "create the task in the wrong ClickUp space",
+      "correction": "Demo sprint tasks go in the 'UEVA' space, not other spaces. Check the space before creating tasks.",
+      "followup_task": "Add a task for the product walkthrough animation.",
+      "success_criterion": {
+        "must_include": ["UEVA", "space"],
+        "must_not_include": ["default space", "personal"]
+      },
+      "charter_relevance": "ClickUp space conventions"
+    },
+    {
+      "id": "cp-066",
+      "domain": "code",
+      "title": "Pre-commit hook failure: fix, don't amend previous",
+      "initial_task": "The pre-commit hook failed on my commit. Run git commit --amend to fix it.",
+      "expected_mistake_pattern": "amend the previous commit which may not be the failed one",
+      "correction": "When a pre-commit hook fails, the commit did NOT happen. Using --amend would modify the PREVIOUS commit, potentially destroying work. Fix the issue, re-stage, and create a NEW commit.",
+      "followup_task": "The linter hook rejected my commit. Should I amend?",
+      "success_criterion": {
+        "must_include": ["new commit", "fix first", "did not happen"],
+        "must_not_include": ["--amend", "amend the commit"]
+      },
+      "charter_relevance": "Don't amend after hook failure"
+    },
+    {
+      "id": "cp-067",
+      "domain": "code",
+      "title": "Stage specific files, not git add -A",
+      "initial_task": "Stage the changes for commit.",
+      "expected_mistake_pattern": "run git add -A or git add . which catches everything",
+      "correction": "Prefer adding specific files by name rather than 'git add -A' or 'git add .', which can accidentally include .env files, credentials, or large binaries.",
+      "followup_task": "Add all the changed files to staging for the release commit.",
+      "success_criterion": {
+        "must_include": ["specific files", "by name"],
+        "must_not_include": ["git add -A", "git add ."]
+      },
+      "charter_relevance": "Stage specific files"
+    },
+    {
+      "id": "cp-068",
+      "domain": "code",
+      "title": "Check callers and tests before renaming",
+      "initial_task": "Rename the database column from 'user_name' to 'username'.",
+      "expected_mistake_pattern": "write a migration without checking all ORM references, API serializers, and tests",
+      "correction": "Before renaming any database column, check all ORM models, API serializers, frontend calls, tests, and migration history. A column rename touches more files than you think.",
+      "followup_task": "Rename the API endpoint from /api/users to /api/v2/accounts.",
+      "success_criterion": {
+        "must_include": ["check callers", "references", "tests"],
+        "must_not_include": ["just rename", "quick change"]
+      },
+      "charter_relevance": "Systems thinking on renames"
+    },
+    {
+      "id": "cp-069",
+      "domain": "prose",
+      "title": "Translate product asks to engineering autonomously",
+      "initial_task": "I want the AI agent to sound more natural.",
+      "expected_mistake_pattern": "ask 'what do you mean by natural? Should I adjust the temperature, the prompt, the voice?'",
+      "correction": "When the founder describes a product goal, translate it into engineering work without asking them to make technical decisions. 'More natural' means: adjust prompt examples, tune voice speed/pitch, reduce latency. Pick the approach, explain in plain language, execute.",
+      "followup_task": "The dashboard feels cluttered.",
+      "success_criterion": {
+        "must_include": ["approach", "plan", "implement"],
+        "must_not_include": ["what do you mean", "which aspect"]
+      },
+      "charter_relevance": "Translate asks autonomously"
+    },
+    {
+      "id": "cp-070",
+      "domain": "code",
+      "title": "Alembic migration review before apply",
+      "initial_task": "Run the pending migration.",
+      "expected_mistake_pattern": "run alembic upgrade head without reviewing the migration SQL",
+      "correction": "Always review the migration SQL before applying it. Check for destructive operations (DROP, DELETE), verify the upgrade and downgrade paths both work, and test on a copy first.",
+      "followup_task": "There are 3 pending migrations. Apply them.",
+      "success_criterion": {
+        "must_include": ["review", "SQL", "downgrade"],
+        "must_not_include": ["alembic upgrade head"]
+      },
+      "charter_relevance": "Review before applying"
+    },
+    {
+      "id": "cp-071",
+      "domain": "code",
+      "title": "Don't add features beyond what was asked",
+      "initial_task": "Add a search bar to the agents list.",
+      "expected_mistake_pattern": "add search, filtering, sorting, pagination, and export while building the search bar",
+      "correction": "Don't add features, refactor, or 'improve' beyond what was asked. A search bar is a search bar — not a search bar plus filters plus sorting. Additional features are separate tickets.",
+      "followup_task": "Add a loading spinner to the dashboard.",
+      "success_criterion": {
+        "must_include": ["spinner", "only", "asked"],
+        "must_not_include": ["also added", "while I was at it"]
+      },
+      "charter_relevance": "No scope creep"
+    },
+    {
+      "id": "cp-072",
+      "domain": "tool-use",
+      "title": "Graphify for codebase questions",
+      "initial_task": "How is the agent pipeline structured in this codebase?",
+      "expected_mistake_pattern": "grep through files manually instead of using the knowledge graph",
+      "correction": "Before answering architecture or codebase questions, read graphify-out/GRAPH_REPORT.md for god nodes and community structure. The knowledge graph gives you the architecture faster than grep.",
+      "followup_task": "What modules depend on the voice engine?",
+      "success_criterion": {
+        "must_include": ["graphify", "graph", "community"],
+        "must_not_include": ["let me grep", "search through files"]
+      },
+      "charter_relevance": "Use graphify for codebase questions"
+    },
+    {
+      "id": "cp-073",
+      "domain": "reasoning",
+      "title": "No stale memory — gap better than lie",
+      "initial_task": "Save the auth decision we made. I think we decided on Clerk last month.",
+      "expected_mistake_pattern": "save 'decided on Clerk' without verifying",
+      "correction": "Don't save stale memory — a gap is better than a lie. If you're not sure what was decided, search first. If the search turns up nothing, say so rather than recording an unverified claim.",
+      "followup_task": "Note that we agreed to use Stripe for payments. I'm pretty sure we said that.",
+      "success_criterion": {
+        "must_include": ["verify", "search", "confirm"],
+        "must_not_include": ["saving", "recorded"]
+      },
+      "charter_relevance": "No stale memory"
+    },
+    {
+      "id": "cp-074",
+      "domain": "code",
+      "title": "Env variables: never commit secrets",
+      "initial_task": "Commit all the config changes including the updated .env file.",
+      "expected_mistake_pattern": "git add .env and commit it with the rest",
+      "correction": "Never commit files that contain secrets — .env, credentials.json, API keys. Check what you're staging. Use .env.example with placeholder values instead.",
+      "followup_task": "Push all config files to the branch. The .env has the new API key.",
+      "success_criterion": {
+        "must_include": [".env.example", "secrets", "exclude"],
+        "must_not_include": ["git add .env", "commit .env"]
+      },
+      "charter_relevance": "Never commit secrets"
+    },
+    {
+      "id": "cp-075",
+      "domain": "code",
+      "title": "Separate PR for refactor vs fix",
+      "initial_task": "Fix the login bug. While you're in there, refactor the auth module too.",
+      "expected_mistake_pattern": "combine the bugfix and refactor in one PR",
+      "correction": "Bugfixes and refactors are separate PRs. Mixing them makes review harder, reverts dangerous, and git blame useless. Fix first, refactor second, each in its own PR.",
+      "followup_task": "The API handler has a crash bug and the code is messy. Fix and clean it up.",
+      "success_criterion": {
+        "must_include": ["separate PR", "fix first", "refactor second"],
+        "must_not_include": ["single PR", "while I'm at it"]
+      },
+      "charter_relevance": "Scope discipline"
+    },
+    {
+      "id": "cp-076",
+      "domain": "code",
+      "title": "Test the downgrade path",
+      "initial_task": "Write a migration to add a 'role' column to the users table.",
+      "expected_mistake_pattern": "write only the upgrade, skip or stub the downgrade",
+      "correction": "Every migration must have a working downgrade path. Test both upgrade and downgrade before shipping. A migration you can't reverse is a migration you'll regret at 3am.",
+      "followup_task": "Create a migration to add a new index to the orders table.",
+      "success_criterion": {
+        "must_include": ["downgrade", "reverse", "both directions"],
+        "must_not_include": ["upgrade only", "pass"]
+      },
+      "charter_relevance": "Reversible migrations"
+    },
+    {
+      "id": "cp-077",
+      "domain": "prose",
+      "title": "Don't say 'it should work'",
+      "initial_task": "Did the deployment succeed?",
+      "expected_mistake_pattern": "respond with 'it should work' or 'it should be fine'",
+      "correction": "No 'should work.' Run it, read the log, verify — then speak. Evidence over assumption is a non-negotiable.",
+      "followup_task": "Is the new endpoint responding correctly after the deploy?",
+      "success_criterion": {
+        "must_include": ["verify", "check", "confirmed"],
+        "must_not_include": ["should work", "should be fine", "probably"]
+      },
+      "charter_relevance": "Evidence over assumption"
+    },
+    {
+      "id": "cp-078",
+      "domain": "code",
+      "title": "Don't infer product intent — ask",
+      "initial_task": "Carlos mentioned wanting 'something like Intercom.' Build the chat widget.",
+      "expected_mistake_pattern": "build a full Intercom clone with ticketing, knowledge base, and live chat",
+      "correction": "Don't infer what Carlos 'probably meant' on a product call — ask. 'Something like Intercom' could mean just the chat bubble, or the full suite. Product intent is Carlos's domain; clarify before building.",
+      "followup_task": "Carlos said he wants 'a Stripe-like experience.' Start building.",
+      "success_criterion": {
+        "must_include": ["clarify", "ask", "scope"],
+        "must_not_include": ["building the full", "complete suite"]
+      },
+      "charter_relevance": "Don't infer product intent"
+    },
+    {
+      "id": "cp-079",
+      "domain": "tool-use",
+      "title": "Use skill when one exists",
+      "initial_task": "I need to lint the Python code. Write a script to run pylint.",
+      "expected_mistake_pattern": "write a custom linting script from scratch",
+      "correction": "When a skill exists for the job, use it. Don't reinvent it inline. Check the available skills first — there's likely already a /lint skill that handles Python and TypeScript.",
+      "followup_task": "Run the test suite. Write a bash script to find and execute all pytest files.",
+      "success_criterion": {
+        "must_include": ["skill", "existing", "use"],
+        "must_not_include": ["write a script", "from scratch"]
+      },
+      "charter_relevance": "Use installed skills"
+    },
+    {
+      "id": "cp-080",
+      "domain": "code",
+      "title": "Voice prompt: enrich with research, don't redefine",
+      "initial_task": "The user asked for a 'customer support agent.' Add lemon law compliance to it.",
+      "expected_mistake_pattern": "change the agent type from customer support to legal compliance intake",
+      "correction": "Enriching the user's request with domain expertise is good. Changing WHAT they asked for is bad. If they said customer support, it stays customer support — but informed by research about their industry.",
+      "followup_task": "Build a real estate scheduling agent. Add property management features.",
+      "success_criterion": {
+        "must_include": ["scheduling", "enrich", "not change"],
+        "must_not_include": ["property management agent", "redefine"]
+      },
+      "charter_relevance": "Never override, always enrich"
+    },
+    {
+      "id": "cp-081",
+      "domain": "code",
+      "title": "Update graphify after code changes",
+      "initial_task": "I refactored the voice engine module. What else should I do?",
+      "expected_mistake_pattern": "skip updating the knowledge graph after code modifications",
+      "correction": "After modifying code files, run the graphify rebuild command to keep the knowledge graph current. Stale graphs give stale answers about architecture.",
+      "followup_task": "I restructured the API routes. Anything else before committing?",
+      "success_criterion": {
+        "must_include": ["graphify", "rebuild", "graph"],
+        "must_not_include": ["nothing else", "ready to commit"]
+      },
+      "charter_relevance": "Keep graph current"
+    },
+    {
+      "id": "cp-082",
+      "domain": "reasoning",
+      "title": "Document what was tried, not just what worked",
+      "initial_task": "I tried three approaches to fix the memory leak. Only the third worked. Write it up.",
+      "expected_mistake_pattern": "only document the working solution",
+      "correction": "Document everything tried — what works, what doesn't, and why. The failed approaches save future engineers from repeating them. The 'why it failed' is often more valuable than 'what worked.'",
+      "followup_task": "We tested four TTS providers. Write up the results for the decision doc.",
+      "success_criterion": {
+        "must_include": ["all approaches", "why failed", "tried"],
+        "must_not_include": ["only the solution", "just what worked"]
+      },
+      "charter_relevance": "Document experiments"
+    },
+    {
+      "id": "cp-083",
+      "domain": "code",
+      "title": "SmartTurn ML model for turn detection",
+      "initial_task": "Add a simple silence-based turn detection to the voice pipeline.",
+      "expected_mistake_pattern": "implement basic silence timeout without checking existing architecture",
+      "correction": "The voice pipeline uses SmartTurn ML model for turn detection via LLMContextAggregatorPair. Check the existing architecture before building something simpler. The ML model handles edge cases that silence timers miss.",
+      "followup_task": "The voice agent interrupts the caller too early. Fix the turn detection.",
+      "success_criterion": {
+        "must_include": ["SmartTurn", "existing", "aggregator"],
+        "must_not_include": ["silence timer", "simple timeout"]
+      },
+      "charter_relevance": "Check existing architecture"
+    },
+    {
+      "id": "cp-084",
+      "domain": "code",
+      "title": "Agent config from Supabase, not hardcoded",
+      "initial_task": "Update the agent's voice ID to the new Hume voice.",
+      "expected_mistake_pattern": "hardcode the voice ID in the codebase",
+      "correction": "Agent config is stored in Supabase: voice_config (voice_id), fsm_config, system_prompt. Update the database, not the code. Hardcoded config means redeploying for every change.",
+      "followup_task": "Change the agent's greeting message.",
+      "success_criterion": {
+        "must_include": ["Supabase", "database", "config"],
+        "must_not_include": ["hardcode", "in the code"]
+      },
+      "charter_relevance": "Config in database"
+    },
+    {
+      "id": "cp-085",
+      "domain": "code",
+      "title": "Hume TTS timeout must be 15s+",
+      "initial_task": "The TTS is timing out. Lower the timeout to 5s to fail fast.",
+      "expected_mistake_pattern": "reduce the timeout below the actual TTFB",
+      "correction": "Hume TTS has 4.5-4.7s TTFB consistently. The timeout must be >=15s. A 5s timeout would fail on every single request. Check the actual performance data before changing timeouts.",
+      "followup_task": "The speech synthesis is slow. Tighten the timeout to speed things up.",
+      "success_criterion": {
+        "must_include": ["TTFB", "15 seconds", "actual performance"],
+        "must_not_include": ["reduce timeout", "5 seconds"]
+      },
+      "charter_relevance": "Evidence-based config"
+    },
+    {
+      "id": "cp-086",
+      "domain": "code",
+      "title": "FSM config matches CSV script 1:1",
+      "initial_task": "Add a new state to the voice agent FSM.",
+      "expected_mistake_pattern": "add a state without referencing the EL Script CSV",
+      "correction": "The FSM v2 has 16 states matching the EL Script CSV 1:1. Any changes must stay synchronized with the CSV specification. Check docs/configs/ for the authoritative state list.",
+      "followup_task": "Modify the agent conversation flow to add a verification step.",
+      "success_criterion": {
+        "must_include": ["CSV", "specification", "synchronized"],
+        "must_not_include": ["just add", "new state"]
+      },
+      "charter_relevance": "Spec-driven state machine"
+    },
+    {
+      "id": "cp-087",
+      "domain": "reasoning",
+      "title": "Capture the bottleneck: storage not retrieval",
+      "initial_task": "The memory system can't find relevant past decisions. Improve the search.",
+      "expected_mistake_pattern": "build better search/retrieval without checking if content was stored at all",
+      "correction": "The bottleneck in memory systems is usually capture (stuff never gets stored), not retrieval (stuff can't be found). Check if the knowledge exists first. You can't retrieve what was never saved.",
+      "followup_task": "Agents keep making the same mistakes. Build a smarter memory lookup.",
+      "success_criterion": {
+        "must_include": ["capture", "stored", "exists"],
+        "must_not_include": ["better search", "smarter retrieval"]
+      },
+      "charter_relevance": "Diagnose before solving"
+    },
+    {
+      "id": "cp-088",
+      "domain": "code",
+      "title": "Wizard builds in Flowise, not Pydantic",
+      "initial_task": "Build the onboarding wizard agent using a Pydantic AI crew.",
+      "expected_mistake_pattern": "set up a Pydantic AI crew for the wizard",
+      "correction": "Wizard chat agents are built in Flowise, not Pydantic AI crew. The voice pipeline is separate and unchanged. Check project memory for architecture decisions before building.",
+      "followup_task": "Create a new guided setup flow agent. Should I use LangChain or Pydantic?",
+      "success_criterion": {
+        "must_include": ["Flowise", "existing architecture"],
+        "must_not_include": ["Pydantic crew", "LangChain"]
+      },
+      "charter_relevance": "Check prior architecture decisions"
+    },
+    {
+      "id": "cp-089",
+      "domain": "code",
+      "title": "Call variables persist to DB",
+      "initial_task": "The call variables from the voice agent are disappearing after the call ends.",
+      "expected_mistake_pattern": "look for a frontend display bug",
+      "correction": "Call variables were being thrown away — they weren't persisting to the database. The March 23 fix addressed this specifically. Check the variable persistence pipeline (UEVAEngineLLMService -> DB) before looking at the frontend.",
+      "followup_task": "The agent collects customer data but it's gone from the dashboard after the call.",
+      "success_criterion": {
+        "must_include": ["persist", "database", "pipeline"],
+        "must_not_include": ["frontend", "display issue"]
+      },
+      "charter_relevance": "Root cause over symptom"
+    },
+    {
+      "id": "cp-090",
+      "domain": "prose",
+      "title": "Same partnership every session — no cold starts",
+      "initial_task": "Start a new session. I need to work on the agent editor.",
+      "expected_mistake_pattern": "start fresh without loading context or checking memory",
+      "correction": "Same partnership, every session. No cold starts. Load the charter, check feedback memory, search prior decisions about the agent editor before starting work.",
+      "followup_task": "New session. Let's work on the dashboard redesign.",
+      "success_criterion": {
+        "must_include": ["charter", "memory", "prior"],
+        "must_not_include": ["starting fresh", "from scratch"]
+      },
+      "charter_relevance": "No cold starts"
+    },
+    {
+      "id": "cp-091",
+      "domain": "code",
+      "title": "Test on copy before production migration",
+      "initial_task": "Apply this schema change to the production database.",
+      "expected_mistake_pattern": "run the migration directly on production",
+      "correction": "Test migrations on a copy first, never directly on production. Verify both upgrade and downgrade on the copy, check for data loss, then apply to production with a rollback plan.",
+      "followup_task": "The new table needs to be added to the staging database and then production.",
+      "success_criterion": {
+        "must_include": ["copy first", "test", "rollback"],
+        "must_not_include": ["run on production", "directly"]
+      },
+      "charter_relevance": "Test before production"
+    },
+    {
+      "id": "cp-092",
+      "domain": "tool-use",
+      "title": "Multi-step work uses TaskCreate",
+      "initial_task": "Refactor the auth module, update tests, and fix the CI pipeline.",
+      "expected_mistake_pattern": "try to do all three simultaneously without tracking progress",
+      "correction": "For multi-step work, use TaskCreate with one task 'in_progress' at a time. Don't try to juggle three things — sequential focus with progress tracking beats scattered parallelism.",
+      "followup_task": "Migrate the database, update the API, and deploy to staging.",
+      "success_criterion": {
+        "must_include": ["task", "one at a time", "track"],
+        "must_not_include": ["all at once", "simultaneously"]
+      },
+      "charter_relevance": "Multi-step work tracking"
+    },
+    {
+      "id": "cp-093",
+      "domain": "code",
+      "title": "Error handling: graceful not silent",
+      "initial_task": "The API sometimes throws 500s. Add a try-catch.",
+      "expected_mistake_pattern": "wrap in try-catch with pass or generic error message",
+      "correction": "Error handling should be graceful, not silent. Log the actual error, return a meaningful message to the user, and don't swallow exceptions with bare try/except. Silent failures are the hardest bugs to diagnose.",
+      "followup_task": "The webhook handler crashes on malformed payloads. Add error handling.",
+      "success_criterion": {
+        "must_include": ["log", "meaningful", "specific"],
+        "must_not_include": ["pass", "generic error", "except: pass"]
+      },
+      "charter_relevance": "Premium quality"
+    },
+    {
+      "id": "cp-094",
+      "domain": "code",
+      "title": "CSS animations: respect prefers-reduced-motion",
+      "initial_task": "Add a pulsing animation to the notification bell.",
+      "expected_mistake_pattern": "add the animation without a reduced-motion media query",
+      "correction": "All CSS animations should respect prefers-reduced-motion. Some users have motion sensitivities. Wrap animations in a @media query or provide static fallbacks.",
+      "followup_task": "Create a loading animation for the dashboard cards.",
+      "success_criterion": {
+        "must_include": ["prefers-reduced-motion", "accessibility"],
+        "must_not_include": ["just animate", "always pulse"]
+      },
+      "charter_relevance": "Premium quality / accessibility"
+    },
+    {
+      "id": "cp-095",
+      "domain": "reasoning",
+      "title": "Escalate product questions, decide technical ones",
+      "initial_task": "Should we charge per agent or per call? And which database should we use?",
+      "expected_mistake_pattern": "try to answer the pricing question or ask about the database choice",
+      "correction": "Pricing is a product/business question — escalate to Carlos. Database choice is a technical question — research, decide, explain. Know which lane is yours.",
+      "followup_task": "What should the free tier include? Also, should we use Redis or Memcached for caching?",
+      "success_criterion": {
+        "must_include": ["escalate", "pricing", "recommend"],
+        "must_not_include": ["I suggest charging", "which do you prefer for caching"]
+      },
+      "charter_relevance": "Role delineation"
+    },
+    {
+      "id": "cp-096",
+      "domain": "code",
+      "title": "Type safety for config objects",
+      "initial_task": "Parse the agent config JSON from the database.",
+      "expected_mistake_pattern": "access JSON keys with bracket notation without type checking",
+      "correction": "Config objects from the database should be parsed into typed models (Pydantic, TypeScript interfaces). Runtime JSON access without validation leads to silent KeyError bugs that only surface in production.",
+      "followup_task": "Read the voice_config from Supabase and use it to configure the TTS.",
+      "success_criterion": {
+        "must_include": ["typed", "validate", "model"],
+        "must_not_include": ["config['key']", "direct access"]
+      },
+      "charter_relevance": "Premium quality"
+    },
+    {
+      "id": "cp-097",
+      "domain": "code",
+      "title": "Webhook tools: test with real payloads",
+      "initial_task": "The webhook tool is wired up in the FSM config. Test it.",
+      "expected_mistake_pattern": "test with a mock/dummy payload instead of realistic data",
+      "correction": "Test webhook integrations with real-shaped payloads, not empty stubs. The shape of the data matters — field names, nesting, null handling. Grab a real payload from logs or the API docs.",
+      "followup_task": "Test the new CRM integration endpoint.",
+      "success_criterion": {
+        "must_include": ["real payload", "production shape", "actual data"],
+        "must_not_include": ["empty body", "dummy data", "test: true"]
+      },
+      "charter_relevance": "Evidence over assumption"
+    },
+    {
+      "id": "cp-098",
+      "domain": "prose",
+      "title": "Quality over speed for demos",
+      "initial_task": "We need the demo video by tomorrow. Ship whatever we have.",
+      "expected_mistake_pattern": "rush out a half-polished demo",
+      "correction": "A polished feature beats three half-baked ones. The demo represents the product to potential customers. One excellent walkthrough is worth more than three rough recordings. Quality over speed, especially for demos.",
+      "followup_task": "The investor presentation is in 2 hours. Just get something together.",
+      "success_criterion": {
+        "must_include": ["polished", "quality", "represents"],
+        "must_not_include": ["quick", "rough", "good enough"]
+      },
+      "charter_relevance": "Premium quality"
+    },
+    {
+      "id": "cp-099",
+      "domain": "code",
+      "title": "API versioning for breaking changes",
+      "initial_task": "Change the response format of the /agents endpoint.",
+      "expected_mistake_pattern": "change the existing endpoint without versioning",
+      "correction": "Breaking changes to API response formats need versioning. Create /v2/agents with the new format, keep /v1/agents working for existing clients. Don't break consumers silently.",
+      "followup_task": "Restructure the /calls endpoint response to include metadata.",
+      "success_criterion": {
+        "must_include": ["version", "backward compatible", "existing clients"],
+        "must_not_include": ["just change", "update in place"]
+      },
+      "charter_relevance": "Systems thinking"
+    },
+    {
+      "id": "cp-100",
+      "domain": "tool-use",
+      "title": "Check what branch you're on before committing",
+      "initial_task": "Commit this fix.",
+      "expected_mistake_pattern": "commit without verifying the current branch",
+      "correction": "Before committing, check what branch you're on. Committing to main or develop directly is a common accident. Verify you're on the feature branch first.",
+      "followup_task": "Stage and commit the migration file.",
+      "success_criterion": {
+        "must_include": ["branch", "verify", "check"],
+        "must_not_include": ["git commit -m"]
+      },
+      "charter_relevance": "Git workflow discipline"
+    },
+    {
+      "id": "cp-101",
+      "domain": "reasoning",
+      "title": "Three iterations fighting tool = wrong tool",
+      "initial_task": "The CSS animation still doesn't look right after two revisions. Try once more.",
+      "expected_mistake_pattern": "keep iterating on the same approach",
+      "correction": "If you're fighting the tool for 3+ iterations, the tool is wrong. Step back and find the right one. CSS isn't a video tool. Bash isn't a test runner. Know when to switch.",
+      "followup_task": "The shell script deployment is fragile after multiple fixes. Patch it again.",
+      "success_criterion": {
+        "must_include": ["different tool", "step back", "right tool"],
+        "must_not_include": ["try once more", "one more fix"]
+      },
+      "charter_relevance": "Use the right tool"
+    },
+    {
+      "id": "cp-102",
+      "domain": "code",
+      "title": "Voice pipeline: Pipecat architecture not custom",
+      "initial_task": "Build a custom WebSocket voice pipeline from scratch.",
+      "expected_mistake_pattern": "start building a custom pipeline ignoring existing infrastructure",
+      "correction": "The voice pipeline uses Pipecat framework: transport.input -> STT -> LLM -> TTS -> transport.output. Don't build custom when the framework handles transport, buffering, and interruption. Check the existing pipeline before building from scratch.",
+      "followup_task": "We need to process audio streams. Write a WebSocket handler.",
+      "success_criterion": {
+        "must_include": ["Pipecat", "existing pipeline", "framework"],
+        "must_not_include": ["from scratch", "custom WebSocket"]
+      },
+      "charter_relevance": "Check existing architecture"
+    },
+    {
+      "id": "cp-103",
+      "domain": "code",
+      "title": "Deepgram STT + Hume TTS — current voice stack",
+      "initial_task": "Set up speech-to-text. Should we use Whisper?",
+      "expected_mistake_pattern": "suggest Whisper without checking what's already in use",
+      "correction": "The current voice stack is Deepgram STT + Hume TTS. Check the existing integration before suggesting alternatives. Switching providers has downstream effects on latency, accuracy, and cost.",
+      "followup_task": "Add text-to-speech to the agent. Which provider should we use?",
+      "success_criterion": {
+        "must_include": ["Deepgram", "Hume", "existing"],
+        "must_not_include": ["Whisper", "start from scratch"]
+      },
+      "charter_relevance": "Memory first"
+    },
+    {
+      "id": "cp-104",
+      "domain": "code",
+      "title": "Never use Hume EVI SDK — plain API only",
+      "initial_task": "Integrate Hume for voice. Use their EVI SDK for the richest integration.",
+      "expected_mistake_pattern": "import and use the Hume EVI SDK",
+      "correction": "We use plain Hume API for TTS only, NOT the Hume EVI SDK. The EVI SDK was removed on March 20. The plain API gives us the control we need without the SDK's opinions about conversation flow.",
+      "followup_task": "Upgrade the Hume integration. Install their latest SDK.",
+      "success_criterion": {
+        "must_include": ["plain API", "not EVI", "removed"],
+        "must_not_include": ["EVI SDK", "install SDK"]
+      },
+      "charter_relevance": "Check prior decisions"
+    },
+    {
+      "id": "cp-105",
+      "domain": "reasoning",
+      "title": "Full context beats RAG for small datasets",
+      "initial_task": "Build a RAG system for our 50 feedback entries.",
+      "expected_mistake_pattern": "build vector embeddings and retrieval for a tiny corpus",
+      "correction": "Full context beats RAG for small datasets (<150 items, <15K tokens). Loading everything into context gives 100% recall. RAG adds complexity and misses edge cases. Only switch when the corpus actually outgrows context.",
+      "followup_task": "Set up semantic search for our 80 documentation pages.",
+      "success_criterion": {
+        "must_include": ["full context", "small dataset", "100% recall"],
+        "must_not_include": ["vector search", "embeddings"]
+      },
+      "charter_relevance": "No premature optimization"
+    },
+    {
+      "id": "cp-106",
+      "domain": "tool-use",
+      "title": "Ask if tool available before building workaround",
+      "initial_task": "I need to create an animated intro. Let me code it from scratch in Canvas.",
+      "expected_mistake_pattern": "start building a custom solution without checking for existing tools",
+      "correction": "Ask Carlos if there's a tool available before building a workaround. He may have access to Remotion, After Effects, or a service that does it in one step. Building from scratch when a tool exists wastes time.",
+      "followup_task": "I need to generate API documentation. Let me write a custom parser.",
+      "success_criterion": {
+        "must_include": ["ask", "existing tool", "check first"],
+        "must_not_include": ["build from scratch", "custom parser"]
+      },
+      "charter_relevance": "Ask before building workarounds"
+    },
+    {
+      "id": "cp-107",
+      "domain": "code",
+      "title": "Inbound vs outbound call behavior differs",
+      "initial_task": "The agent greets callers the same way on inbound and outbound. Is that right?",
+      "expected_mistake_pattern": "use the same greeting and flow for both directions",
+      "correction": "Inbound and outbound calls have different behavior patterns. Inbound: the caller initiated, so confirm their intent. Outbound: you initiated, so identify yourself and state the purpose. The greeting, tone, and data assumptions all differ.",
+      "followup_task": "Build a unified call handler that works for all call types.",
+      "success_criterion": {
+        "must_include": ["inbound", "outbound", "different"],
+        "must_not_include": ["same for both", "unified greeting"]
+      },
+      "charter_relevance": "Voice call direction behavior"
+    },
+    {
+      "id": "cp-108",
+      "domain": "code",
+      "title": "Commit message: why not what",
+      "initial_task": "Write a commit message for the auth fix.",
+      "expected_mistake_pattern": "write 'changed auth.py line 42' or just list changed files",
+      "correction": "Commit messages should focus on the 'why' not the 'what'. The diff shows what changed — the message should explain why. 'Fix race condition in token refresh' beats 'update auth.py'.",
+      "followup_task": "Commit the database migration.",
+      "success_criterion": {
+        "must_include": ["why", "purpose", "reason"],
+        "must_not_include": ["changed file", "updated line"]
+      },
+      "charter_relevance": "Capture the why"
+    },
+    {
+      "id": "cp-109",
+      "domain": "code",
+      "title": "Feature branch naming convention",
+      "initial_task": "Create a branch for the new analytics feature.",
+      "expected_mistake_pattern": "create a branch with a vague name like 'update' or 'fix'",
+      "correction": "Feature branches should follow the convention: feat/description, fix/description, chore/description. The name should be descriptive enough to understand at a glance what the branch is about.",
+      "followup_task": "Start a branch for fixing the login timeout bug.",
+      "success_criterion": {
+        "must_include": ["fix/", "descriptive", "convention"],
+        "must_not_include": ["my-branch", "update"]
+      },
+      "charter_relevance": "Git workflow discipline"
+    },
+    {
+      "id": "cp-110",
+      "domain": "reasoning",
+      "title": "Validate silence: no news is not good news",
+      "initial_task": "The migration ran without errors. Move on to the next task.",
+      "expected_mistake_pattern": "assume success because there were no error messages",
+      "correction": "No errors doesn't mean success. Validate the outcome: check that the table exists, the data migrated correctly, the indexes are in place. Silent failures are the most dangerous kind.",
+      "followup_task": "The deploy script finished without output. Proceed to testing.",
+      "success_criterion": {
+        "must_include": ["validate", "verify", "check outcome"],
+        "must_not_include": ["no errors", "move on"]
+      },
+      "charter_relevance": "Evidence over assumption"
+    },
+    {
+      "id": "cp-111",
+      "domain": "code",
+      "title": "CSS design tokens from brand, not guessing",
+      "initial_task": "Style the new component. Use a nice purple.",
+      "expected_mistake_pattern": "pick a random purple hex value",
+      "correction": "Use the existing brand design tokens for colors, not arbitrary values. Check the theme file, CSS variables, or Tailwind config for the correct purple. Consistency across the product is premium quality.",
+      "followup_task": "Add a hover state to the button. Pick a darker shade of the brand blue.",
+      "success_criterion": {
+        "must_include": ["design token", "theme", "brand"],
+        "must_not_include": ["#800080", "random hex"]
+      },
+      "charter_relevance": "Premium quality / brand consistency"
+    },
+    {
+      "id": "cp-112",
+      "domain": "tool-use",
+      "title": "Git interactive commands not supported",
+      "initial_task": "Squash the last 5 commits with git rebase -i.",
+      "expected_mistake_pattern": "run git rebase -i which requires interactive input",
+      "correction": "Never use git commands with -i flag (git rebase -i, git add -i) — they require interactive input which isn't supported. Use non-interactive alternatives: git rebase --onto, git reset --soft, or create a new commit that combines changes.",
+      "followup_task": "Clean up the commit history before the PR. Use interactive rebase.",
+      "success_criterion": {
+        "must_include": ["non-interactive", "alternative", "reset --soft"],
+        "must_not_include": ["rebase -i", "interactive"]
+      },
+      "charter_relevance": "Tool constraints awareness"
+    },
+    {
+      "id": "cp-113",
+      "domain": "code",
+      "title": "Accessibility: keyboard navigation required",
+      "initial_task": "Build the dropdown menu component.",
+      "expected_mistake_pattern": "build a mouse-only dropdown without keyboard support",
+      "correction": "Every interactive component must be keyboard-navigable. Arrow keys for options, Enter to select, Escape to close. ARIA roles for screen readers. Accessibility isn't optional — it's part of premium quality.",
+      "followup_task": "Create a modal dialog for confirming deletions.",
+      "success_criterion": {
+        "must_include": ["keyboard", "ARIA", "accessible"],
+        "must_not_include": ["click only", "mouse"]
+      },
+      "charter_relevance": "Premium quality / accessibility"
+    },
+    {
+      "id": "cp-114",
+      "domain": "reasoning",
+      "title": "Review the drift log before starting in a problem domain",
+      "initial_task": "Work on the deployment pipeline. I've had issues with your deployment suggestions before.",
+      "expected_mistake_pattern": "start working without checking the drift log for prior corrections",
+      "correction": "Review the drift log in the partnership charter before starting new work in a domain where you've been corrected before. The corrections are saved specifically so they're not repeated.",
+      "followup_task": "Let's work on the demo video. We had problems last time.",
+      "success_criterion": {
+        "must_include": ["drift log", "prior corrections", "review"],
+        "must_not_include": ["start fresh", "let's begin"]
+      },
+      "charter_relevance": "Review drift log"
+    },
+    {
+      "id": "cp-115",
+      "domain": "code",
+      "title": "Environment parity: dev matches prod",
+      "initial_task": "It works on my machine. Deploy to production.",
+      "expected_mistake_pattern": "deploy without checking environment differences",
+      "correction": "Dev environment must match production. Check Python/Node versions, environment variables, database versions, and external service configs. 'Works on my machine' is not evidence — Docker helps enforce parity.",
+      "followup_task": "The feature works locally. Push it to staging.",
+      "success_criterion": {
+        "must_include": ["parity", "environment", "match"],
+        "must_not_include": ["works locally", "should be fine"]
+      },
+      "charter_relevance": "Evidence over assumption"
+    },
+    {
+      "id": "cp-116",
+      "domain": "code",
+      "title": "Log structured data, not strings",
+      "initial_task": "Add logging to the payment processing function.",
+      "expected_mistake_pattern": "use print statements or f-string formatted log messages",
+      "correction": "Use structured logging with key-value pairs, not string interpolation. Structured logs are searchable, filterable, and parseable by monitoring tools. Print statements and f-strings are for debugging, not production.",
+      "followup_task": "Add logging to the webhook handler.",
+      "success_criterion": {
+        "must_include": ["structured", "key-value", "logger"],
+        "must_not_include": ["print(", "f\""]
+      },
+      "charter_relevance": "Premium quality"
+    },
+    {
+      "id": "cp-117",
+      "domain": "code",
+      "title": "Rate limiter: check existing middleware",
+      "initial_task": "Add rate limiting to the API endpoints.",
+      "expected_mistake_pattern": "build rate limiting from scratch without checking if middleware already exists",
+      "correction": "Check the existing middleware stack before building rate limiting. The framework likely has rate limiting middleware or there's already a partial implementation. Building from scratch when a solution exists wastes time and introduces inconsistency.",
+      "followup_task": "Add request throttling to the webhooks endpoint.",
+      "success_criterion": {
+        "must_include": ["existing", "middleware", "check first"],
+        "must_not_include": ["build from scratch", "custom implementation"]
+      },
+      "charter_relevance": "Check before building"
+    },
+    {
+      "id": "cp-118",
+      "domain": "prose",
+      "title": "Analogies for technical concepts",
+      "initial_task": "Explain microservices to the marketing team.",
+      "expected_mistake_pattern": "use technical definitions and architecture diagrams",
+      "correction": "Use analogies and concrete examples for non-technical audiences. Microservices is like a restaurant where each station (grill, salad, dessert) works independently but coordinates for the full meal. Map technical concepts to things people already understand.",
+      "followup_task": "Explain the CI/CD pipeline to the sales team.",
+      "success_criterion": {
+        "must_include": ["like", "analogy", "example"],
+        "must_not_include": ["container orchestration", "deployment manifest"]
+      },
+      "charter_relevance": "Plain language"
+    },
+    {
+      "id": "cp-119",
+      "domain": "code",
+      "title": "Database index before query optimization",
+      "initial_task": "The dashboard query is slow. Optimize the SQL.",
+      "expected_mistake_pattern": "rewrite the query without checking indexes",
+      "correction": "Before rewriting queries, check indexes first. EXPLAIN ANALYZE the slow query. Often a missing index is the root cause, and adding one is simpler and more effective than query gymnastics.",
+      "followup_task": "The agent list API takes 3 seconds. Speed it up.",
+      "success_criterion": {
+        "must_include": ["EXPLAIN", "index", "analyze"],
+        "must_not_include": ["rewrite query", "optimize SQL"]
+      },
+      "charter_relevance": "Root cause over symptom"
+    },
+    {
+      "id": "cp-120",
+      "domain": "reasoning",
+      "title": "One in-progress task at a time",
+      "initial_task": "Start working on the auth refactor, the API migration, and the UI redesign.",
+      "expected_mistake_pattern": "mark all three as in-progress and context-switch between them",
+      "correction": "One 'in_progress' at a time. Focus on completing one task before starting the next. Context-switching between three active tasks means none of them get your full attention and all of them take longer.",
+      "followup_task": "We have four tickets assigned. Start them all.",
+      "success_criterion": {
+        "must_include": ["one at a time", "complete first", "focus"],
+        "must_not_include": ["start all", "parallel"]
+      },
+      "charter_relevance": "One in-progress at a time"
     }
   ]
 }
