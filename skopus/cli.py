@@ -29,6 +29,7 @@ from skopus.graphify_bridge import (
     graphify_available,
     install_graphify_for_claude,
 )
+from skopus.guard import install_guard, HOOK_CAPABLE_AGENTS
 from skopus.renderer import (
     materialize,
     read_adapters_lock,
@@ -286,6 +287,13 @@ def init(
         if wired_any:
             _track_linked_project(skopus_dir, cwd)
 
+            # Install guard hooks for hook-capable agents
+            for agent_name in result.agents:
+                key = agent_name.lower().replace(" ", "-")
+                if key in HOOK_CAPABLE_AGENTS:
+                    if install_guard(cwd, key):
+                        console.print(f"  [green]✓[/green] {agent_name}: guard hook installed")
+
             # Wire graphify into the project
             if graphify_available():
                 graphify_result = install_graphify_for_claude(
@@ -361,6 +369,11 @@ def link(
         project_path=resolved_project,
     )
     console.print(f"[green]✓[/green] {result.message}")
+
+    # Install guard hook if the agent supports it
+    if install_guard(resolved_project, agent):
+        console.print(f"[green]✓[/green] Guard hook installed (corrections auto-inject before risky commands)")
+
     _track_linked_project(skopus_dir, resolved_project)
 
 
@@ -385,6 +398,11 @@ def unlink(
 
     result = adapter_impl.uninstall(project_path=resolved)
     console.print(f"[green]✓[/green] {result.message}")
+
+    # Remove guard hook
+    from skopus.guard import uninstall_guard
+    if uninstall_guard(resolved, agent):
+        console.print(f"[green]✓[/green] Guard hook removed")
 
     # Remove from projects.json
     skopus_dir = resolve_skopus_path()

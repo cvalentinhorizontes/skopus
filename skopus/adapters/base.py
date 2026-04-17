@@ -84,10 +84,17 @@ def _read_file_safe(path: Path, max_chars: int = 10000) -> str:
     return content
 
 
+def _slugify_project(name: str) -> str:
+    """Convert a project name to a kebab-case slug."""
+    import re
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+
 def build_skopus_block(
     charter_path: Path,
     vault_path: Path,
     *,
+    project_path: Path | None = None,
     format: str = "markdown",
 ) -> str:
     """Construct the skopus context block to inject into a platform's context file.
@@ -108,12 +115,25 @@ def build_skopus_block(
     user_profile = _read_file_safe(charter_path / "user_profile.md")
     memory_index = _read_file_safe(charter_path.parent / "memory" / "MEMORY.md", max_chars=4000)
 
+    # Read project-scoped memory (if linked)
+    project_memory = ""
+    project_slug = ""
+    if project_path:
+        project_slug = _slugify_project(project_path.name)
+        project_mem_dir = charter_path.parent / "memory" / "projects" / project_slug
+        if project_mem_dir.exists():
+            project_memory = _read_file_safe(project_mem_dir / "MEMORY.md", max_chars=2000)
+
     return f"""{SKOPUS_SECTION_START}
 ## Skopus Context (auto-loaded)
 
 This project is wired to Skopus. The agent loads four lenses at session start.
 Managed by Skopus — do not edit between these markers. Run `skopus unlink` to
 remove or `skopus doctor` to verify the wiring.
+
+**Session greeting:** At the very start of each new conversation, before any other output, print exactly:
+`Skopus loaded — charter, memory, vault active.`
+This confirms to the user that persistent context is wired in.
 
 Role delineation (the anti-fragmentation rule):
 - *How do we work?* → charter (below)
@@ -133,6 +153,10 @@ Role delineation (the anti-fragmentation rule):
 
 {memory_index}
 
+### Project Memory
+
+{project_memory if project_memory else "*(no project memory yet — run /charter-evolve to populate)*"}
+
 ### Vault
 
 Vault location: `{vault_path}`
@@ -146,7 +170,8 @@ To ingest a source: `/ingest <path-or-url>`
 - Charter: `{charter_path}/CLAUDE.md`
 - Full charter: `{charter_path}/workflow_partnership.md`
 - User profile: `{charter_path}/user_profile.md`
-- Memory: `{charter_path.parent}/memory/`
+- Memory (global): `{charter_path.parent}/memory/`
+- Memory (project): `{charter_path.parent}/memory/projects/{project_slug}/` if project_slug else "(not linked)"
 - Vault: `{vault_path}/`
 
 *Wired: {date}*
@@ -216,7 +241,7 @@ class MarkdownAdapter(Adapter):
         else:
             existing = ""
 
-        block = build_skopus_block(charter_path, vault_path)
+        block = build_skopus_block(charter_path, vault_path, project_path=project_path)
 
         if SKOPUS_SECTION_START in existing:
             start = existing.index(SKOPUS_SECTION_START)
