@@ -102,77 +102,54 @@ def build_skopus_block(
     The block is bracketed by HTML comment markers (<!-- skopus:begin --> /
     <!-- skopus:end -->) so it can be detected and updated idempotently.
 
-    IMPORTANT: The charter, user profile, and memory index are INLINED into
-    the block (not @-referenced). This avoids Claude Code's "import external
-    files?" permission prompt which fires when @ references point outside
-    the project directory. The vault index IS @-referenced because it's
-    typically small and the user expects the agent to have access.
+    Phase 0 keeps this block intentionally small. Agent context files should
+    carry the protocol and local pointers, not the full charter, user profile,
+    memory index, project memory, and vault contents on every turn.
     """
     date = datetime.now().strftime("%Y-%m-%d")
 
-    # Read the files we'll inline
-    charter_content = _read_file_safe(charter_path / "CLAUDE.md")
-    user_profile = _read_file_safe(charter_path / "user_profile.md")
-    memory_index = _read_file_safe(charter_path.parent / "memory" / "MEMORY.md", max_chars=4000)
-
-    # Read project-scoped memory (if linked)
-    project_memory = ""
     project_slug = ""
     if project_path:
         project_slug = _slugify_project(project_path.name)
-        project_mem_dir = charter_path.parent / "memory" / "projects" / project_slug
-        if project_mem_dir.exists():
-            project_memory = _read_file_safe(project_mem_dir / "MEMORY.md", max_chars=2000)
+
+    memory_root = charter_path.parent / "memory"
+    project_memory_path = (
+        memory_root / "projects" / project_slug / "MEMORY.md"
+        if project_slug
+        else None
+    )
+    project_memory_line = (
+        f"- Project memory: `{project_memory_path}`"
+        if project_memory_path
+        else "- Project memory: link a project with `skopus link` to create one."
+    )
 
     return f"""{SKOPUS_SECTION_START}
-## Skopus Context (auto-loaded)
+## Skopus Context
 
-This project is wired to Skopus. The agent loads four lenses at session start.
-Managed by Skopus — do not edit between these markers. Run `skopus unlink` to
-remove or `skopus doctor` to verify the wiring.
+This project is wired to Skopus. Keep this block short: use the pointers and
+tools below for deeper context instead of relying on everything being inlined.
+Managed by Skopus; edit outside these markers or run `skopus unlink`.
 
-**Session greeting:** At the very start of each new conversation, before any other output, print exactly:
-`Skopus loaded — charter, memory, vault active.`
-This confirms to the user that persistent context is wired in.
+### Protocol
 
-Role delineation (the anti-fragmentation rule):
-- *How do we work?* → charter (below)
-- *What happened before?* → memory (below + search)
-- *What did we decide or learn?* → vault (via /query)
-- *What does the code look like?* → graph (via graphify MCP, when installed)
+- For non-trivial code, design, debug, review, research, dependency, security,
+  billing, or migration work, check relevant Skopus context before acting.
+- Prefer MCP tools when available: `skopus_search_memory`,
+  `skopus_query_vault`, `skopus_get_charter_section`, `skopus_record_drift`.
+- If MCP is unavailable, read the narrowest relevant file listed below.
+- When the user corrects a durable behavior, preserve it through
+  `/charter-evolve` at session end.
 
-### Charter
+### Local Context
 
-{charter_content}
-
-### User Profile
-
-{user_profile}
-
-### Memory Index
-
-{memory_index}
-
-### Project Memory
-
-{project_memory if project_memory else "*(no project memory yet — run /charter-evolve to populate)*"}
-
-### Vault
-
-Vault location: `{vault_path}`
-
-To query the vault: `/query <question>`
-To capture session knowledge: `/compile`
-To ingest a source: `/ingest <path-or-url>`
-
-### File Locations (for /charter-evolve and direct edits)
-
-- Charter: `{charter_path}/CLAUDE.md`
-- Full charter: `{charter_path}/workflow_partnership.md`
-- User profile: `{charter_path}/user_profile.md`
-- Memory (global): `{charter_path.parent}/memory/`
-- Memory (project): `{charter_path.parent}/memory/projects/{project_slug}/` if project_slug else "(not linked)"
-- Vault: `{vault_path}/`
+- Charter: `{charter_path / "CLAUDE.md"}`
+- Full workflow charter: `{charter_path / "workflow_partnership.md"}`
+- User profile: `{charter_path / "user_profile.md"}`
+- Memory index: `{memory_root / "MEMORY.md"}`
+{project_memory_line}
+- Feedback memory: `{memory_root / "feedback"}`
+- Vault: `{vault_path}`
 
 *Wired: {date}*
 {SKOPUS_SECTION_END}

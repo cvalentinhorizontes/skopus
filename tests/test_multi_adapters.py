@@ -22,6 +22,7 @@ from skopus.adapters.base import (
     SKOPUS_SECTION_START,
     AdapterStatus,
     MarkdownAdapter,
+    build_skopus_block,
 )
 
 
@@ -146,6 +147,34 @@ def test_markdown_adapter_writes_correct_file(tmp_path, adapter_cls, file_name):
     assert (project / file_name).exists()
     content = (project / file_name).read_text()
     assert SKOPUS_SECTION_START in content
+
+
+def test_skopus_block_is_slim_pointer_block(tmp_path):
+    """Phase 0: adapter files must not inline full Skopus memory."""
+    skopus_dir = tmp_path / ".skopus"
+    charter = skopus_dir / "charter"
+    memory = skopus_dir / "memory"
+    vault = skopus_dir / "vault"
+    project = tmp_path / "project"
+
+    charter.mkdir(parents=True)
+    memory.mkdir(parents=True)
+    vault.mkdir(parents=True)
+    project.mkdir()
+
+    (charter / "CLAUDE.md").write_text("# UNIQUE_CHARTER_CONTENT\n" * 100)
+    (charter / "user_profile.md").write_text("# UNIQUE_PROFILE_CONTENT\n" * 100)
+    (memory / "MEMORY.md").write_text("# UNIQUE_MEMORY_CONTENT\n" * 100)
+
+    block = build_skopus_block(charter, vault, project_path=project)
+
+    assert "UNIQUE_CHARTER_CONTENT" not in block
+    assert "UNIQUE_PROFILE_CONTENT" not in block
+    assert "UNIQUE_MEMORY_CONTENT" not in block
+    assert str(charter / "CLAUDE.md") in block
+    assert str(memory / "MEMORY.md") in block
+    assert str(vault) in block
+    assert len(block.splitlines()) <= 35
 
 
 @pytest.mark.parametrize(

@@ -61,11 +61,11 @@ def test_run_benchmark_cp_with_mock(tmp_path):
 
 
 def test_run_benchmark_stub_returns_empty_report(tmp_path):
-    """LongMemEval/LoCoMo/MSC/RULER are stubs in v0.1.0-alpha — empty reports."""
+    """Unimplemented dataset wrappers return empty reports."""
     skopus_dir = tmp_path / ".skopus"
     skopus_dir.mkdir()
     driver = MockDriver()
-    for name in ["longmemeval", "locomo", "msc", "ruler"]:
+    for name in ["longmemeval", "msc", "ruler"]:
         report = run_benchmark(
             name=name,
             driver=driver,
