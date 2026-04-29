@@ -6,6 +6,7 @@ directory exists, and fall back to <project>/CLAUDE.md otherwise.
 
 from skopus.adapters.base import AdapterStatus
 from skopus.adapters.claude_code import (
+    SKOPUS_SECTION_END,
     SKOPUS_SECTION_START,
     ClaudeCodeAdapter,
     claude_md_path,
@@ -90,6 +91,67 @@ def test_status_checks_claude_dir_first(tmp_path):
         project_path=project,
     )
     assert adapter.status(project_path=project) == AdapterStatus.INSTALLED
+
+
+def test_install_removes_orphan_root_when_only_skopus_content(tmp_path):
+    """Pre-Phase-0 root CLAUDE.md was 100% Skopus block — must be deleted on relink."""
+    project = tmp_path / "project"
+    (project / ".claude").mkdir(parents=True)
+    legacy_block = (
+        f"{SKOPUS_SECTION_START}\n## Skopus Context\nstale content\n"
+        f"{SKOPUS_SECTION_END}\n"
+    )
+    (project / "CLAUDE.md").write_text(legacy_block)
+
+    adapter = ClaudeCodeAdapter()
+    result = adapter.install(
+        charter_path=tmp_path / ".skopus" / "charter",
+        vault_path=tmp_path / "Vault",
+        project_path=project,
+    )
+
+    assert not (project / "CLAUDE.md").exists()
+    assert (project / ".claude" / "CLAUDE.md").exists()
+    assert "cleaned legacy block" in result.message
+
+
+def test_install_strips_skopus_block_from_root_preserving_other_content(tmp_path):
+    """Pre-Phase-0 root CLAUDE.md with a user section must keep the user content."""
+    project = tmp_path / "project"
+    (project / ".claude").mkdir(parents=True)
+    (project / "CLAUDE.md").write_text(
+        f"# My Project\n\nUser rules.\n\n"
+        f"{SKOPUS_SECTION_START}\nstale skopus content\n{SKOPUS_SECTION_END}\n"
+    )
+
+    adapter = ClaudeCodeAdapter()
+    adapter.install(
+        charter_path=tmp_path / ".skopus" / "charter",
+        vault_path=tmp_path / "Vault",
+        project_path=project,
+    )
+
+    root_content = (project / "CLAUDE.md").read_text()
+    assert SKOPUS_SECTION_START not in root_content
+    assert "# My Project" in root_content
+    assert "User rules." in root_content
+    assert SKOPUS_SECTION_START in (project / ".claude" / "CLAUDE.md").read_text()
+
+
+def test_install_does_not_touch_root_when_targeting_root(tmp_path):
+    """If we're wiring into root (no .claude dir), don't run the migration."""
+    project = tmp_path / "project"
+    project.mkdir()
+
+    adapter = ClaudeCodeAdapter()
+    adapter.install(
+        charter_path=tmp_path / ".skopus" / "charter",
+        vault_path=tmp_path / "Vault",
+        project_path=project,
+    )
+
+    assert (project / "CLAUDE.md").exists()
+    assert SKOPUS_SECTION_START in (project / "CLAUDE.md").read_text()
 
 
 def test_uninstall_targets_claude_dir_when_present(tmp_path):

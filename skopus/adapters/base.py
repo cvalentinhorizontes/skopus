@@ -135,9 +135,7 @@ Managed by Skopus; edit outside these markers or run `skopus unlink`.
 
 - For non-trivial code, design, debug, review, research, dependency, security,
   billing, or migration work, check relevant Skopus context before acting.
-- Prefer MCP tools when available: `skopus_search_memory`,
-  `skopus_query_vault`, `skopus_get_charter_section`, `skopus_record_drift`.
-- If MCP is unavailable, read the narrowest relevant file listed below.
+- Read the narrowest relevant file listed below; do not load everything.
 - When the user corrects a durable behavior, preserve it through
   `/charter-evolve` at session end.
 
