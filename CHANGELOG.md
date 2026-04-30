@@ -4,6 +4,28 @@ All notable changes to Skopus are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] — 2026-04-30
+
+Docs + metadata patch release. No code changes; safe upgrade for everyone.
+
+### Added
+- **Custom SVG hero logo** at `docs/assets/skopus-logo.svg` — ANSI-Shadow
+  SKOPUS letterforms rendered with a white body, olive-green gradient
+  stroke (`#a8b86b → #6b8e23 → #4a6519`), and an olive outer glow.
+  Centered in the README and width-bounded so it scales cleanly.
+
+### Changed
+- Initial commits of the v0.5.0 README landed on `main` without the
+  intended hero asset; this release ships the full version with the
+  SVG in place.
+
+### Fixed
+- **`pyproject.toml` repository URLs** updated from
+  `cvalentinhorizontes/skopus` to `elbalen/skopus` (Homepage,
+  Documentation, Issues, Repository). The v0.5.0 PyPI page links to the
+  pre-transfer repo via redirect; v0.5.1 points at the canonical URL
+  directly.
+
 ## [0.5.0] — 2026-04-30
 
 Multi-agent slash-command surface, install-method-aware self-upgrade, and
