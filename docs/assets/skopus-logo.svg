@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 220" role="img" aria-label="Skopus" preserveAspectRatio="xMidYMid meet">
+  <title>Skopus</title>
+  <defs>
+    <filter id="neon" x="-15%" y="-15%" width="130%" height="130%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2.4" result="blur"/>
+      <feFlood flood-color="#ff7a18" flood-opacity="0.9"/>
+      <feComposite in2="blur" operator="in" result="orangeGlow"/>
+      <feMerge>
+        <feMergeNode in="orangeGlow"/>
+        <feMergeNode in="orangeGlow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <linearGradient id="orangeEdge" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffae5b"/>
+      <stop offset="50%" stop-color="#ff7a18"/>
+      <stop offset="100%" stop-color="#e85d00"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Hidden block-letter renderer using ANSI-Shadow ASCII as monospace text.
+       Dark-grey fill, neon-orange stroke, neon-orange outer glow. -->
+  <g filter="url(#neon)">
+    <text x="440" y="62"
+          text-anchor="middle"
+          font-family="ui-monospace, 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace"
+          font-size="36"
+          font-weight="700"
+          fill="#1f2937"
+          stroke="url(#orangeEdge)"
+          stroke-width="1.4"
+          paint-order="stroke fill"
+          xml:space="preserve"
+          letter-spacing="0">
+      <tspan x="440" dy="0">███████╗██╗  ██╗ ██████╗ ██████╗ ██╗   ██╗███████╗</tspan>
+      <tspan x="440" dy="28">██╔════╝██║ ██╔╝██╔═══██╗██╔══██╗██║   ██║██╔════╝</tspan>
+      <tspan x="440" dy="28">███████╗█████╔╝ ██║   ██║██████╔╝██║   ██║███████╗</tspan>
+      <tspan x="440" dy="28">╚════██║██╔═██╗ ██║   ██║██╔═══╝ ██║   ██║╚════██║</tspan>
+      <tspan x="440" dy="28">███████║██║  ██╗╚██████╔╝██║     ╚██████╔╝███████║</tspan>
+      <tspan x="440" dy="28">╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═╝      ╚═════╝ ╚══════╝</tspan>
+    </text>
+  </g>
+</svg>

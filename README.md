@@ -1,13 +1,6 @@
 <div align="center">
 
-```
-███████╗██╗  ██╗ ██████╗ ██████╗ ██╗   ██╗███████╗
-██╔════╝██║ ██╔╝██╔═══██╗██╔══██╗██║   ██║██╔════╝
-███████╗█████╔╝ ██║   ██║██████╔╝██║   ██║███████╗
-╚════██║██╔═██╗ ██║   ██║██╔═══╝ ██║   ██║╚════██║
-███████║██║  ██╗╚██████╔╝██║     ╚██████╔╝███████║
-╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═╝      ╚═════╝ ╚══════╝
-```
+<img src="docs/assets/skopus-logo.svg" alt="Skopus" width="640">
 
 **Persistent four-lens context for AI coding assistants.**
 Your agent. Across every session. Across every tool.
