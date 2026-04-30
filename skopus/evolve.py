@@ -77,15 +77,19 @@ def _prompt_entries() -> list[EvolveEntry]:
             ).ask()
             if not title:
                 break
-            why = questionary.text(
-                "  → Why it worked (one sentence)",
-            ).ask() or ""
-            how = questionary.text(
-                "  → How to apply next time (one sentence)",
-            ).ask() or ""
-            entries.append(
-                EvolveEntry(kind="validated", title=title, why=why, how_to_apply=how)
+            why = (
+                questionary.text(
+                    "  → Why it worked (one sentence)",
+                ).ask()
+                or ""
             )
+            how = (
+                questionary.text(
+                    "  → How to apply next time (one sentence)",
+                ).ask()
+                or ""
+            )
+            entries.append(EvolveEntry(kind="validated", title=title, why=why, how_to_apply=how))
             if not questionary.confirm("  Add another validated call?", default=False).ask():
                 break
 
@@ -100,15 +104,19 @@ def _prompt_entries() -> list[EvolveEntry]:
             ).ask()
             if not title:
                 break
-            why = questionary.text(
-                "  → Why it was wrong",
-            ).ask() or ""
-            how = questionary.text(
-                "  → The rule to follow next time",
-            ).ask() or ""
-            entries.append(
-                EvolveEntry(kind="drift", title=title, why=why, how_to_apply=how)
+            why = (
+                questionary.text(
+                    "  → Why it was wrong",
+                ).ask()
+                or ""
             )
+            how = (
+                questionary.text(
+                    "  → The rule to follow next time",
+                ).ask()
+                or ""
+            )
+            entries.append(EvolveEntry(kind="drift", title=title, why=why, how_to_apply=how))
             if not questionary.confirm("  Add another correction?", default=False).ask():
                 break
 
@@ -123,9 +131,7 @@ def _prompt_entries() -> list[EvolveEntry]:
                 break
             why = questionary.text("  → Why it's non-negotiable").ask() or ""
             how = questionary.text("  → How it applies").ask() or ""
-            entries.append(
-                EvolveEntry(kind="rule", title=title, why=why, how_to_apply=how)
-            )
+            entries.append(EvolveEntry(kind="rule", title=title, why=why, how_to_apply=how))
             if not questionary.confirm("  Add another rule?", default=False).ask():
                 break
 
@@ -177,10 +183,7 @@ def _append_to_charter(skopus_dir: Path, entries: list[EvolveEntry]) -> list[str
     if drifts and "## 7. Where We've Drifted" in content:
         addition = "\n"
         for e in drifts:
-            addition += (
-                f"\n> **{date} — {e.title}.** **Why:** {e.why} "
-                f"**Fix:** {e.how_to_apply}\n"
-            )
+            addition += f"\n> **{date} — {e.title}.** **Why:** {e.why} **Fix:** {e.how_to_apply}\n"
         content = content.replace(
             "## 7. Where We've Drifted (Evidence Log)",
             "## 7. Where We've Drifted (Evidence Log)" + addition,
@@ -209,9 +212,12 @@ def _commit(skopus_dir: Path, message: str) -> bool:
         return False
     try:
         identity = [
-            "-c", "user.email=skopus@localhost",
-            "-c", "user.name=Skopus",
-            "-c", "commit.gpgsign=false",
+            "-c",
+            "user.email=skopus@localhost",
+            "-c",
+            "user.name=Skopus",
+            "-c",
+            "commit.gpgsign=false",
         ]
         subprocess.run(
             ["git", "add", "-A"],
