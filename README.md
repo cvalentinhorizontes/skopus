@@ -1,6 +1,13 @@
 <div align="center">
 
-# Skopus
+```
+███████╗██╗  ██╗ ██████╗ ██████╗ ██╗   ██╗███████╗
+██╔════╝██║ ██╔╝██╔═══██╗██╔══██╗██║   ██║██╔════╝
+███████╗█████╔╝ ██║   ██║██████╔╝██║   ██║███████╗
+╚════██║██╔═██╗ ██║   ██║██╔═══╝ ██║   ██║╚════██║
+███████║██║  ██╗╚██████╔╝██║     ╚██████╔╝███████║
+╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═╝      ╚═════╝ ╚══════╝
+```
 
 **Persistent four-lens context for AI coding assistants.**
 Your agent. Across every session. Across every tool.
@@ -10,22 +17,6 @@ Your agent. Across every session. Across every tool.
 [![CI](https://img.shields.io/github/actions/workflow/status/elbalen/skopus/test.yml?branch=main&label=CI)](https://github.com/elbalen/skopus/actions)
 [![License](https://img.shields.io/badge/license-MIT-22c55e)](LICENSE)
 [![Status](https://img.shields.io/badge/status-alpha-f59e0b)](https://github.com/elbalen/skopus)
-
-```
-   ╭───────────────────╮     ╭───────────────────╮     ╭───────────────────╮
-   │  Claude Code      │     │  Cursor / Codex   │     │  Gemini / Aider   │
-   ╰─────────┬─────────╯     ╰─────────┬─────────╯     ╰─────────┬─────────╯
-             ╰────────────────────────╮│╭────────────────────────╯
-                                       ↓
-                              ╔═══════════════╗
-                              ║    Skopus     ║
-                              ║  ──────────   ║
-                              ║   Charter     ║
-                              ║   Memory      ║
-                              ║   Vault       ║
-                              ║   Graph       ║
-                              ╚═══════════════╝
-```
 
 *σκοπός — Greek for **watcher**, **purpose**, **target**. The root of `scope`, `telescope`, `episcopal`.*
 
