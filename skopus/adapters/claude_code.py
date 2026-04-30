@@ -18,6 +18,7 @@ from skopus.adapters.base import (
     AdapterStatus,
     build_skopus_block,
 )
+from skopus.commands import load_command_templates, write_markdown_command
 
 
 def claude_md_path(project_path: Path) -> Path:
@@ -191,3 +192,8 @@ class ClaudeCodeAdapter(Adapter):
     def session_end_hook(self) -> str:
         """Claude Code uses slash commands; a future PreStop hook is planned."""
         return "/charter-evolve"
+
+    def install_commands(self, skopus_dir: Path) -> list[Path]:
+        """Install slash commands at ``~/.claude/commands/<name>.md``."""
+        target_dir = Path.home() / ".claude" / "commands"
+        return [write_markdown_command(target_dir, t) for t in load_command_templates()]

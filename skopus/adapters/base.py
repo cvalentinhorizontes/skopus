@@ -73,6 +73,19 @@ class Adapter(ABC):
         """Command used to trigger /charter-evolve at session end."""
         return "/charter-evolve"
 
+    def install_commands(self, skopus_dir: Path) -> list[Path]:
+        """Install Skopus's slash-command/skill set into this agent's surface.
+
+        Default is a no-op for adapters whose agents don't expose a
+        user-defined slash-command surface (e.g. Aider, GitHub Copilot CLI).
+        Adapters that do (Claude Code, Cursor, Codex CLI, Gemini CLI)
+        override this and write the rendered files into the agent's
+        canonical user-level commands directory.
+
+        Returns the list of paths written.
+        """
+        return []
+
 
 def _read_file_safe(path: Path, max_chars: int = 10000) -> str:
     """Read a file if it exists, truncating if too long."""
