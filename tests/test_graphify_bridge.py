@@ -105,8 +105,7 @@ def test_consolidate_graphify_block_moves_to_claude_dir(tmp_path):
 
     # .claude/CLAUDE.md already has the skopus block (simulating what skopus wrote)
     skopus_content = (
-        "# My Project\n\n"
-        f"{SKOPUS_SECTION_START}\nSkopus context here.\n{SKOPUS_SECTION_END}\n"
+        f"# My Project\n\n{SKOPUS_SECTION_START}\nSkopus context here.\n{SKOPUS_SECTION_END}\n"
     )
     (claude_dir / "CLAUDE.md").write_text(skopus_content)
 

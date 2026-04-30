@@ -46,7 +46,7 @@ def test_score_response_fails_on_forbidden_keyword():
         "must_not_include": ["quick fix"],
     }
     response = "Here's a quick fix that addresses the root cause."
-    passed, score, _ = score_response(response, criterion)
+    passed, _score, _ = score_response(response, criterion)
     assert passed is False  # forbidden keyword trips the fail
 
 
@@ -107,12 +107,15 @@ def test_cp_scenarios_cover_multiple_domains():
     scenarios = load_dataset()
     domains = {s.domain for s in scenarios}
     assert "code" in domains
-    assert {"code", "prose", "reasoning", "tool-use"}.issubset(domains | {"tool-use"}) or len(domains) >= 3
+    assert {"code", "prose", "reasoning", "tool-use"}.issubset(domains | {"tool-use"}) or len(
+        domains
+    ) >= 3
 
 
 # ---------------------------------------------------------------------------
 # LLM-as-judge scorer: score_response_llm
 # ---------------------------------------------------------------------------
+
 
 def _make_scenario() -> CPScenario:
     """Build a minimal CPScenario for scorer tests."""
@@ -135,13 +138,17 @@ def _make_scenario() -> CPScenario:
 class TestScoreResponseLlm:
     def test_valid_json_response(self):
         """Judge returns clean JSON — should parse applied/score/reasoning."""
-        judge = MockDriver(responses={
-            "CORRECTION": json.dumps({
-                "applied": True,
-                "score": 0.9,
-                "reasoning": "Response demonstrates root-cause analysis.",
-            }),
-        })
+        judge = MockDriver(
+            responses={
+                "CORRECTION": json.dumps(
+                    {
+                        "applied": True,
+                        "score": 0.9,
+                        "reasoning": "Response demonstrates root-cause analysis.",
+                    }
+                ),
+            }
+        )
         scenario = _make_scenario()
 
         passed, score, notes = score_response_llm(
@@ -157,9 +164,11 @@ class TestScoreResponseLlm:
 
     def test_invalid_json_response(self):
         """Judge returns garbage — should return False/0.0 with parse error."""
-        judge = MockDriver(responses={
-            "CORRECTION": "This is not valid JSON at all {{{",
-        })
+        judge = MockDriver(
+            responses={
+                "CORRECTION": "This is not valid JSON at all {{{",
+            }
+        )
         scenario = _make_scenario()
 
         passed, score, notes = score_response_llm(
@@ -174,16 +183,20 @@ class TestScoreResponseLlm:
 
     def test_json_wrapped_in_code_blocks(self):
         """Judge wraps JSON in ```json ... ``` — stripping logic should handle it."""
-        raw_json = json.dumps({
-            "applied": True,
-            "score": 0.85,
-            "reasoning": "Correction applied correctly.",
-        })
+        raw_json = json.dumps(
+            {
+                "applied": True,
+                "score": 0.85,
+                "reasoning": "Correction applied correctly.",
+            }
+        )
         wrapped = f"```json\n{raw_json}\n```"
 
-        judge = MockDriver(responses={
-            "CORRECTION": wrapped,
-        })
+        judge = MockDriver(
+            responses={
+                "CORRECTION": wrapped,
+            }
+        )
         scenario = _make_scenario()
 
         passed, score, notes = score_response_llm(
@@ -198,16 +211,20 @@ class TestScoreResponseLlm:
 
     def test_applied_false_returns_not_passed(self):
         """Judge says applied=false — passed should be False."""
-        judge = MockDriver(responses={
-            "CORRECTION": json.dumps({
-                "applied": False,
-                "score": 0.1,
-                "reasoning": "Response used a quick fix instead.",
-            }),
-        })
+        judge = MockDriver(
+            responses={
+                "CORRECTION": json.dumps(
+                    {
+                        "applied": False,
+                        "score": 0.1,
+                        "reasoning": "Response used a quick fix instead.",
+                    }
+                ),
+            }
+        )
         scenario = _make_scenario()
 
-        passed, score, notes = score_response_llm(
+        passed, score, _notes = score_response_llm(
             "Here's a quick fix for the error.",
             scenario,
             judge,
@@ -221,6 +238,7 @@ class TestScoreResponseLlm:
 # Scoring parameter flow in run_scenario
 # ---------------------------------------------------------------------------
 
+
 class TestRunScenarioScoringModes:
     """Verify the scoring= parameter routes to the correct scorer."""
 
@@ -232,9 +250,11 @@ class TestRunScenarioScoringModes:
     def test_keyword_scoring(self, tmp_path):
         """scoring='keyword' uses the keyword scorer (default path)."""
         scenario = _make_scenario()
-        driver = MockDriver(responses={
-            scenario.followup_task: "I will find the root cause and ask why.",
-        })
+        driver = MockDriver(
+            responses={
+                scenario.followup_task: "I will find the root cause and ask why.",
+            }
+        )
 
         result = run_scenario(
             scenario,
@@ -250,16 +270,22 @@ class TestRunScenarioScoringModes:
     def test_llm_scoring(self, tmp_path):
         """scoring='llm' uses the LLM judge scorer."""
         scenario = _make_scenario()
-        driver = MockDriver(responses={
-            scenario.followup_task: "I investigated the root cause.",
-        })
-        judge = MockDriver(responses={
-            "CORRECTION": json.dumps({
-                "applied": True,
-                "score": 0.95,
-                "reasoning": "Excellent root-cause analysis.",
-            }),
-        })
+        driver = MockDriver(
+            responses={
+                scenario.followup_task: "I investigated the root cause.",
+            }
+        )
+        judge = MockDriver(
+            responses={
+                "CORRECTION": json.dumps(
+                    {
+                        "applied": True,
+                        "score": 0.95,
+                        "reasoning": "Excellent root-cause analysis.",
+                    }
+                ),
+            }
+        )
 
         result = run_scenario(
             scenario,
@@ -277,16 +303,22 @@ class TestRunScenarioScoringModes:
     def test_both_scoring(self, tmp_path):
         """scoring='both' runs both scorers; LLM is authoritative, keyword in notes."""
         scenario = _make_scenario()
-        driver = MockDriver(responses={
-            scenario.followup_task: "I will find the root cause.",
-        })
-        judge = MockDriver(responses={
-            "CORRECTION": json.dumps({
-                "applied": True,
-                "score": 0.8,
-                "reasoning": "Applied well.",
-            }),
-        })
+        driver = MockDriver(
+            responses={
+                scenario.followup_task: "I will find the root cause.",
+            }
+        )
+        judge = MockDriver(
+            responses={
+                "CORRECTION": json.dumps(
+                    {
+                        "applied": True,
+                        "score": 0.8,
+                        "reasoning": "Applied well.",
+                    }
+                ),
+            }
+        )
 
         result = run_scenario(
             scenario,
@@ -308,9 +340,11 @@ class TestRunScenarioScoringModes:
     def test_llm_scoring_without_judge_falls_back_to_keyword(self, tmp_path):
         """scoring='llm' but no judge_driver provided — falls through to keyword."""
         scenario = _make_scenario()
-        driver = MockDriver(responses={
-            scenario.followup_task: "I will find the root cause.",
-        })
+        driver = MockDriver(
+            responses={
+                scenario.followup_task: "I will find the root cause.",
+            }
+        )
 
         result = run_scenario(
             scenario,
@@ -328,6 +362,7 @@ class TestRunScenarioScoringModes:
 # ---------------------------------------------------------------------------
 # Parallel execution: run_correction_persistence with parallel > 1
 # ---------------------------------------------------------------------------
+
 
 class TestParallelExecution:
     def test_results_in_original_order(self, tmp_path):

@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+from typing import ClassVar
 
 SKOPUS_SECTION_START = "<!-- skopus:begin -->"
 SKOPUS_SECTION_END = "<!-- skopus:end -->"
@@ -73,6 +74,19 @@ class Adapter(ABC):
         """Command used to trigger /charter-evolve at session end."""
         return "/charter-evolve"
 
+    def install_commands(self, skopus_dir: Path) -> list[Path]:
+        """Install Skopus's slash-command/skill set into this agent's surface.
+
+        Default is a no-op for adapters whose agents don't expose a
+        user-defined slash-command surface (e.g. Aider, GitHub Copilot CLI).
+        Adapters that do (Claude Code, Cursor, Codex CLI, Gemini CLI)
+        override this and write the rendered files into the agent's
+        canonical user-level commands directory.
+
+        Returns the list of paths written.
+        """
+        return []
+
 
 def _read_file_safe(path: Path, max_chars: int = 10000) -> str:
     """Read a file if it exists, truncating if too long."""
@@ -87,6 +101,7 @@ def _read_file_safe(path: Path, max_chars: int = 10000) -> str:
 def _slugify_project(name: str) -> str:
     """Convert a project name to a kebab-case slug."""
     import re
+
     return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
 
 
@@ -114,9 +129,7 @@ def build_skopus_block(
 
     memory_root = charter_path.parent / "memory"
     project_memory_path = (
-        memory_root / "projects" / project_slug / "MEMORY.md"
-        if project_slug
-        else None
+        memory_root / "projects" / project_slug / "MEMORY.md" if project_slug else None
     )
     project_memory_line = (
         f"- Project memory: `{project_memory_path}`"
@@ -135,9 +148,7 @@ Managed by Skopus; edit outside these markers or run `skopus unlink`.
 
 - For non-trivial code, design, debug, review, research, dependency, security,
   billing, or migration work, check relevant Skopus context before acting.
-- Prefer MCP tools when available: `skopus_search_memory`,
-  `skopus_query_vault`, `skopus_get_charter_section`, `skopus_record_drift`.
-- If MCP is unavailable, read the narrowest relevant file listed below.
+- Read the narrowest relevant file listed below; do not load everything.
 - When the user corrects a durable behavior, preserve it through
   `/charter-evolve` at session end.
 
@@ -174,8 +185,8 @@ class MarkdownAdapter(Adapter):
 
     context_file_name: str = "AGENTS.md"
     prefer_dotdir_name: str | None = None  # e.g. ".claude" for Claude Code
-    detect_config_dirs: list[str] = []  # e.g. [".cursor", "~/.gemini"]
-    detect_binaries: list[str] = []  # e.g. ["cursor", "gemini"]
+    detect_config_dirs: ClassVar[list[str]] = []  # e.g. [".cursor", "~/.gemini"]
+    detect_binaries: ClassVar[list[str]] = []  # e.g. ["cursor", "gemini"]
 
     def _context_file_path(self, project_path: Path) -> Path:
         """Resolve where to write the context file for a given project."""
@@ -191,10 +202,7 @@ class MarkdownAdapter(Adapter):
             expanded = Path(dir_path).expanduser()
             if expanded.exists():
                 return True
-        for binary in self.detect_binaries:
-            if shutil.which(binary):
-                return True
-        return False
+        return any(shutil.which(binary) for binary in self.detect_binaries)
 
     def install(
         self,

@@ -44,7 +44,7 @@ class BenchmarkResult:
     scenario_id: str
     lens: LensConfig
     passed: bool
-    score: float  # 0.0 – 1.0
+    score: float  # 0.0 - 1.0
     notes: str = ""
     tokens_in: int = 0
     tokens_out: int = 0

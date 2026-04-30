@@ -146,9 +146,7 @@ class AnthropicDriver(LLMDriver):
         )
         duration_ms = int((time.time() - start) * 1000)
 
-        text = "".join(
-            block.text for block in message.content if hasattr(block, "text")
-        )
+        text = "".join(block.text for block in message.content if hasattr(block, "text"))
         tokens_in = message.usage.input_tokens
         tokens_out = message.usage.output_tokens
         cost = (

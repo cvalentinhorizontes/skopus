@@ -18,6 +18,7 @@ from skopus.adapters.base import (
     AdapterStatus,
     build_skopus_block,
 )
+from skopus.commands import load_command_templates, write_skill_md
 
 CURSOR_RULE_PATH = ".cursor/rules/skopus.mdc"
 
@@ -32,9 +33,7 @@ class CursorAdapter(Adapter):
         """Cursor stores per-project rules in .cursor/ and may have a binary."""
         if shutil.which("cursor"):
             return True
-        if (Path.home() / ".cursor").exists():
-            return True
-        return False
+        return bool((Path.home() / ".cursor").exists())
 
     def _rule_path(self, project_path: Path) -> Path:
         return project_path / CURSOR_RULE_PATH
@@ -49,7 +48,7 @@ class CursorAdapter(Adapter):
         rule_path = self._rule_path(project_path)
         rule_path.parent.mkdir(parents=True, exist_ok=True)
 
-        inner_block = build_skopus_block(charter_path, vault_path)
+        inner_block = build_skopus_block(charter_path, vault_path, project_path=project_path)
         content = (
             "---\n"
             "description: Skopus context — charter, memory, vault, graph\n"
@@ -115,3 +114,8 @@ class CursorAdapter(Adapter):
         if SKOPUS_SECTION_START in content and SKOPUS_SECTION_END in content:
             return AdapterStatus.INSTALLED
         return AdapterStatus.NOT_INSTALLED
+
+    def install_commands(self, skopus_dir: Path) -> list[Path]:
+        """Install Skopus skills at ``~/.cursor/skills/<name>/SKILL.md``."""
+        skills_dir = Path.home() / ".cursor" / "skills"
+        return [write_skill_md(skills_dir, t) for t in load_command_templates()]

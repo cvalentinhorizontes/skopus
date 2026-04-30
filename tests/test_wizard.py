@@ -32,6 +32,13 @@ def test_default_result_blank_profile_falls_back_to_other():
 
 
 def test_default_result_all_known_profiles_have_non_negotiables():
-    for profile in ["solo-dev", "team-lead", "engineering-manager", "research", "founder", "bug-hunter"]:
+    for profile in [
+        "solo-dev",
+        "team-lead",
+        "engineering-manager",
+        "research",
+        "founder",
+        "bug-hunter",
+    ]:
         result = default_result(seed_profile=profile)
         assert len(result.non_negotiables) >= 3, f"profile {profile} has too few non-negotiables"

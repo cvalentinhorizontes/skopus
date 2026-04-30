@@ -34,15 +34,17 @@ def test_materialize_writes_all_expected_files(tmp_path, monkeypatch):
     assert (skopus_dir / "adapters.lock").exists()
     assert (skopus_dir / "projects.json").exists()
 
-    # Slash commands (global)
-    for cmd in ["ingest", "compile", "query", "lint", "wiki", "charter-evolve", "bench-contribute"]:
-        assert (tmp_path / ".claude" / "commands" / f"{cmd}.md").exists()
+    # Slash commands are an adapter responsibility, not a renderer one —
+    # see ``Adapter.install_commands`` and the per-adapter overrides for
+    # claude-code, cursor, codex, and gemini-cli. The renderer no longer
+    # writes the global ~/.claude/commands/ directory.
+    assert not (tmp_path / ".claude" / "commands").exists()
 
     # First run — nothing skipped
     for path in report.written:
         assert path.exists()
     assert len(report.skipped) == 0
-    assert report.total_files > 10
+    assert report.total_files >= 10
 
 
 def test_materialize_renders_user_name(tmp_path, monkeypatch):
@@ -79,7 +81,7 @@ def test_materialize_is_non_destructive_by_default(tmp_path, monkeypatch):
     report_1 = materialize(result, skopus_dir, commit=False)
     report_2 = materialize(result, skopus_dir, commit=False)
 
-    assert len(report_1.written) > 10
+    assert len(report_1.written) >= 10
     assert len(report_1.skipped) == 0
     # Second run skips most files (adapters.lock is always rewritten)
     assert len(report_2.skipped) >= len(report_1.written) - 2
@@ -129,7 +131,9 @@ def test_materialize_with_commit_creates_git_repo(tmp_path, monkeypatch):
     assert (skopus_dir / ".git").exists()
     log = subprocess.run(
         ["git", "log", "--oneline"],
-        cwd=skopus_dir, capture_output=True, text=True,
+        cwd=skopus_dir,
+        capture_output=True,
+        text=True,
     )
     assert log.returncode == 0
     assert log.stdout.strip()

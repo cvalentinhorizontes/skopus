@@ -52,19 +52,10 @@ TEMPLATES = [
     ("vault/log.md.j2", "vault/log.md"),
 ]
 
-# Static files (no Jinja rendering): (package resource path, output relative to ~/.skopus/)
-STATIC_FILES = [
-    ("vault/.claude/commands/ingest.md", "vault/.claude/commands/ingest.md"),
-    ("vault/.claude/commands/compile.md", "vault/.claude/commands/compile.md"),
-    ("vault/.claude/commands/query.md", "vault/.claude/commands/query.md"),
-    ("vault/.claude/commands/lint.md", "vault/.claude/commands/lint.md"),
-    ("vault/.claude/commands/wiki.md", "vault/.claude/commands/wiki.md"),
-    ("vault/.claude/commands/charter-evolve.md", "vault/.claude/commands/charter-evolve.md"),
-    ("vault/.claude/commands/bench-contribute.md", "vault/.claude/commands/bench-contribute.md"),
-]
-
-# For backwards-compat: exported so cli.py update command can reference it
-VAULT_STATIC = STATIC_FILES
+# No more agent-specific static files at bootstrap time. Slash-command
+# installation is now an adapter responsibility (see ``Adapter.install_commands``)
+# and runs against the agent's own user-command surface, not inside the vault.
+STATIC_FILES: list[tuple[str, str]] = []
 
 
 def _load_template_text(rel_path: str) -> str:
@@ -101,28 +92,40 @@ def _write(path: Path, content: str, *, force: bool = False) -> bool:
 def _git_init_and_commit(repo_dir: Path, message: str) -> None:
     """Initialize a git repo and commit. Best-effort, non-fatal."""
     identity_args = [
-        "-c", "user.email=skopus@localhost",
-        "-c", "user.name=Skopus",
-        "-c", "commit.gpgsign=false",
+        "-c",
+        "user.email=skopus@localhost",
+        "-c",
+        "user.name=Skopus",
+        "-c",
+        "commit.gpgsign=false",
     ]
     try:
         if not (repo_dir / ".git").exists():
             subprocess.run(
                 ["git", "init", "-q", "-b", "main"],
-                cwd=repo_dir, check=True, capture_output=True,
+                cwd=repo_dir,
+                check=True,
+                capture_output=True,
             )
         subprocess.run(
             ["git", "add", "-A"],
-            cwd=repo_dir, check=True, capture_output=True,
+            cwd=repo_dir,
+            check=True,
+            capture_output=True,
         )
         status = subprocess.run(
             ["git", "status", "--porcelain"],
-            cwd=repo_dir, check=True, capture_output=True, text=True,
+            cwd=repo_dir,
+            check=True,
+            capture_output=True,
+            text=True,
         )
         if status.stdout.strip():
             subprocess.run(
                 ["git", *identity_args, "commit", "-q", "-m", message],
-                cwd=repo_dir, check=True, capture_output=True,
+                cwd=repo_dir,
+                check=True,
+                capture_output=True,
             )
     except (subprocess.CalledProcessError, FileNotFoundError):
         pass
@@ -186,11 +189,6 @@ def materialize(
     except FileNotFoundError:
         pass
 
-    # --- Copy static files ---
-    for tmpl_rel, out_rel in STATIC_FILES:
-        content = _load_template_text(tmpl_rel)
-        _materialize_one(skopus_dir / out_rel, content)
-
     # --- adapters.lock (always rewritten — managed state) ---
     adapters_lock = {
         "wired": [a.lower().replace(" ", "-") for a in result.agents],
@@ -209,18 +207,9 @@ def materialize(
     else:
         report.skipped.append(projects_json_path)
 
-    # --- Global slash commands (~/.claude/commands/) ---
-    global_cmds_dir = Path.home() / ".claude" / "commands"
-    global_cmds_dir.mkdir(parents=True, exist_ok=True)
-    for tmpl_rel, out_rel in STATIC_FILES:
-        if ".claude/commands/" in out_rel:
-            cmd_name = out_rel.split("/")[-1]
-            content = _load_template_text(tmpl_rel)
-            global_path = global_cmds_dir / cmd_name
-            if _write(global_path, content, force=force):
-                report.written.append(global_path)
-            else:
-                report.skipped.append(global_path)
+    # Slash-command / skill installation is now per-adapter — driven from
+    # cli.py during ``init``, ``link``, and ``update``. See
+    # ``Adapter.install_commands`` for the per-agent surface mapping.
 
     # --- Git init + commit (ONE repo for everything) ---
     if commit:

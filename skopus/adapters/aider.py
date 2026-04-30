@@ -8,6 +8,7 @@ available. Aider has ``.aider.conf.yml`` for configuration.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 
 from skopus.adapters.base import MarkdownAdapter
 
@@ -19,8 +20,8 @@ class AiderAdapter(MarkdownAdapter):
     display_name = "Aider"
     context_file_name = "AGENTS.md"
     prefer_dotdir_name = None
-    detect_config_dirs = ["~/.aider.conf.yml", "~/.aider"]
-    detect_binaries = ["aider"]
+    detect_config_dirs: ClassVar[list[str]] = ["~/.aider.conf.yml", "~/.aider"]
+    detect_binaries: ClassVar[list[str]] = ["aider"]
 
     def detect(self) -> bool:
         """Aider's config file is a file, not a dir — handle it specially."""
@@ -30,7 +31,4 @@ class AiderAdapter(MarkdownAdapter):
             expanded = Path(dir_path).expanduser()
             if expanded.exists():  # works for both file and dir
                 return True
-        for binary in self.detect_binaries:
-            if _shutil.which(binary):
-                return True
-        return False
+        return any(_shutil.which(binary) for binary in self.detect_binaries)

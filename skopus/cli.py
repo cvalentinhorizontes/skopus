@@ -29,13 +29,14 @@ from skopus.graphify_bridge import (
     graphify_available,
     install_graphify_for_claude,
 )
-from skopus.guard import install_guard, HOOK_CAPABLE_AGENTS
+from skopus.guard import HOOK_CAPABLE_AGENTS, install_guard
 from skopus.renderer import (
     materialize,
     read_adapters_lock,
     resolve_skopus_path,
 )
-from skopus.wizard import WizardResult, default_result, run_wizard
+from skopus.wizard import default_result, run_wizard
+
 
 # Lazy imports for bench subcommand (bench deps are optional)
 def _load_bench():
@@ -58,6 +59,7 @@ def _load_bench():
         "run_benchmark": run_benchmark,
         "save_report": save_report,
     }
+
 
 app = typer.Typer(
     name="skopus",
@@ -120,81 +122,184 @@ def _init_project_memory(skopus_dir: Path, project_path: Path) -> Path | None:
 
 @app.command()
 def version() -> None:
-    """Show the version."""
+    """Show the version + how to upgrade."""
+    from skopus.install_info import detect_install_method
+
+    info = detect_install_method()
     console.print(f"skopus [bold cyan]v{__version__}[/bold cyan]")
+    console.print(f"  Install: [bold]{info.method}[/bold]")
+    if info.location:
+        console.print(f"  Location: [dim]{info.location}[/dim]")
+    if info.notes:
+        console.print(f"  Notes: [yellow]{info.notes}[/yellow]")
+    console.print(
+        f"  Upgrade: [cyan]{info.upgrade_hint}[/cyan]  (or run [italic]skopus self-upgrade[/italic])"
+    )
+
+
+@app.command("self-upgrade")
+def self_upgrade(
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Skip confirmation; just run the detected upgrade command.",
+    ),
+) -> None:
+    """Upgrade the Skopus package itself, then refresh per-agent surfaces.
+
+    Detects the install method (editable / pipx / pip) and runs the right
+    upgrade command for it. Editable installs are not auto-upgraded — those
+    track the local source tree, so upgrade is ``git pull`` and the user's
+    job. After a successful upgrade, ``skopus update`` is invoked
+    automatically to refresh slash-commands and re-link tracked projects.
+    """
+    import subprocess
+
+    from skopus.install_info import detect_install_method
+
+    info = detect_install_method()
+    console.print(f"Detected install method: [bold]{info.method}[/bold]")
+    if info.location:
+        console.print(f"  Location: [dim]{info.location}[/dim]")
+
+    if info.method == "editable":
+        console.print(
+            "[yellow]⚠[/yellow] Editable install detected — Skopus runs from a local source tree."
+        )
+        console.print(f"  To upgrade, run: [cyan]{info.upgrade_hint}[/cyan]")
+        console.print("Then run [italic]skopus update[/italic] to refresh per-agent surfaces.")
+        raise typer.Exit(code=0)
+
+    if info.method == "unknown":
+        console.print("[red]✗[/red] Could not detect how Skopus was installed.")
+        console.print(
+            "  Try: [cyan]pipx upgrade skopus[/cyan] or [cyan]pip install -U skopus[/cyan]"
+        )
+        raise typer.Exit(code=1)
+
+    if not yes:
+        console.print(f"\nWill run: [cyan]{info.upgrade_hint}[/cyan]")
+        confirm = typer.confirm("Proceed?", default=True)
+        if not confirm:
+            console.print("Aborted.")
+            raise typer.Exit(code=1)
+
+    console.print(f"\nRunning [cyan]{info.upgrade_hint}[/cyan]...")
+    result = subprocess.run(info.upgrade_command, capture_output=True, text=True)
+    if result.returncode != 0:
+        console.print(f"[red]✗[/red] Upgrade failed (exit {result.returncode}):")
+        err = result.stderr or result.stdout
+        console.print(err.strip()[:600] or "(no output)")
+        if "externally-managed-environment" in err.lower():
+            console.print(
+                "\n[yellow]Hint:[/yellow] System Python is PEP-668 managed. "
+                "Reinstall via pipx for a permanent fix:"
+            )
+            console.print("  [cyan]pip uninstall skopus && pipx install skopus[/cyan]")
+        raise typer.Exit(code=1)
+
+    console.print("[green]✓[/green] Skopus package upgraded.")
+    console.print("\nRefreshing per-agent surfaces...\n")
+    # Defer to the existing update command so the refresh logic is one place
+    update()
 
 
 @app.command()
 def update() -> None:
-    """Update skopus to the latest version and re-install all global components.
+    """Re-install all global components for every detected agent.
 
-    Runs pip upgrade, then re-installs the graphify skill file and vault
-    slash commands so any new features from the update are immediately available.
+    This command refreshes:
+      - the graphify skill (Claude Code surface)
+      - the Skopus slash-command set, rendered into each detected agent's
+        own user-command surface (Markdown for Claude Code, SKILL.md for
+        Cursor and Codex, TOML for Gemini CLI; Aider and Copilot CLI have
+        no user-command surface and are skipped silently).
+
+    No pip upgrade — Skopus often runs as an editable install or under PEP
+    668-managed Pythons; bumping the package version is the user's job
+    (``pipx upgrade skopus`` / ``pip install -U skopus``).
     """
-    import subprocess
-    import sys
+    console.print("[bold]Refreshing Skopus components...[/bold]\n")
 
-    console.print("[bold]Updating skopus...[/bold]\n")
-
-    # Step 1: pip upgrade
-    console.print("[dim]Step 1/3:[/dim] Upgrading skopus via pip...")
-    try:
-        result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--upgrade", "skopus"],
-            capture_output=True,
-            text=True,
-            timeout=300,
-        )
-        if result.returncode == 0:
-            # Check what version we got
-            version_check = subprocess.run(
-                [sys.executable, "-c", "import skopus; print(skopus.__version__)"],
-                capture_output=True,
-                text=True,
-            )
-            new_ver = version_check.stdout.strip() if version_check.returncode == 0 else "unknown"
-            if f"already satisfied" in result.stdout.lower() or "already up-to-date" in result.stdout.lower():
-                console.print(f"  [green]✓[/green] Already on latest ({new_ver})")
-            else:
-                console.print(f"  [green]✓[/green] Upgraded to v{new_ver}")
-        else:
-            console.print(f"  [yellow]⚠[/yellow] pip upgrade returned non-zero: {result.stderr[:200]}")
-    except subprocess.TimeoutExpired:
-        console.print("  [yellow]⚠[/yellow] pip upgrade timed out (300s)")
-    except FileNotFoundError:
-        console.print("  [red]✗[/red] pip not found")
-
-    # Step 2: re-install graphify skill globally
-    console.print("[dim]Step 2/3:[/dim] Installing graphify skill...")
+    # Graphify skill (Claude Code only)
+    console.print("[dim]Step 1/2:[/dim] Installing graphify skill...")
     from skopus.graphify_bridge import ensure_graphify_skill_installed
 
     if graphify_available():
         if ensure_graphify_skill_installed():
-            console.print("  [green]✓[/green] /graphify skill installed at ~/.claude/skills/graphify/")
+            console.print(
+                "  [green]✓[/green] /graphify skill installed at ~/.claude/skills/graphify/"
+            )
         else:
-            console.print("  [yellow]⚠[/yellow] graphify skill install failed — try: graphify install")
+            console.print(
+                "  [yellow]⚠[/yellow] graphify skill install failed — try: graphify install"
+            )
     else:
         console.print("  [yellow]⚠[/yellow] graphify CLI not on PATH")
 
-    # Step 3: re-install vault slash commands globally
-    console.print("[dim]Step 3/3:[/dim] Installing vault commands globally...")
-    from skopus.renderer import _load_template_text, VAULT_STATIC, _write
+    # Per-adapter slash command / skill installation. ADAPTERS contains
+    # alias keys (e.g. "copilot" + "copilot-cli"); dedupe by class so each
+    # adapter runs exactly once.
+    console.print("[dim]Step 2/2:[/dim] Installing Skopus commands per agent...")
+    skopus_dir = resolve_skopus_path()
+    any_written = False
+    seen: set[type] = set()
+    for agent_key, adapter_cls in ADAPTERS.items():
+        if adapter_cls in seen:
+            continue
+        seen.add(adapter_cls)
+        adapter = get_adapter(agent_key)
+        if not adapter.detect():
+            continue
+        try:
+            paths = adapter.install_commands(skopus_dir)
+        except Exception as exc:
+            console.print(f"  [red]✗[/red] {adapter.display_name}: {exc}")
+            continue
+        if paths:
+            any_written = True
+            # SKILL.md surfaces ship one file per <name>/ subdir; flat surfaces
+            # ship one file per command directly. Show the shared root in both
+            # cases.
+            root = paths[0].parent.parent if paths[0].name == "SKILL.md" else paths[0].parent
+            console.print(
+                f"  [green]✓[/green] {adapter.display_name}: {len(paths)} commands at "
+                f"[dim]{root}[/dim]"
+            )
+        else:
+            console.print(f"  [dim]⊘ {adapter.display_name}: no user-command surface[/dim]")
+    if not any_written:
+        console.print("  [yellow]⚠[/yellow] No detected agents have a user-command surface.")
 
-    global_cmds_dir = Path.home() / ".claude" / "commands"
-    global_cmds_dir.mkdir(parents=True, exist_ok=True)
-    installed_count = 0
-    for _, out_rel in VAULT_STATIC:
-        if out_rel.startswith(".claude/commands/"):
-            cmd_name = out_rel.split("/")[-1]
-            content = _load_template_text(f"vault/{out_rel}")
-            global_path = global_cmds_dir / cmd_name
-            _write(global_path, content, force=True)  # always refresh on update
-            installed_count += 1
-    console.print(f"  [green]✓[/green] {installed_count} commands at ~/.claude/commands/")
+    # Re-link every tracked project so context-file blocks pick up new template
+    projects_path = skopus_dir / "projects.json"
+    if projects_path.exists():
+        try:
+            projects: list[str] = json.loads(projects_path.read_text())
+        except json.JSONDecodeError:
+            projects = []
+        if projects:
+            console.print(f"\nRe-linking {len(projects)} tracked project(s)...")
+            for project_str in projects:
+                project = Path(project_str)
+                if not project.exists():
+                    console.print(f"  [dim]⊘[/dim] {project.name} (not found)")
+                    continue
+                try:
+                    adapter_impl = get_adapter("claude-code")
+                    adapter_impl.install(
+                        charter_path=skopus_dir / "charter",
+                        vault_path=skopus_dir / "vault",
+                        project_path=project,
+                    )
+                    console.print(f"  [green]✓[/green] {project.name}")
+                except Exception as exc:
+                    console.print(f"  [red]✗[/red] {project.name}: {exc}")
 
     console.print(
-        "\n[bold green]Update complete.[/bold green] "
-        "Restart your Claude Code session to pick up any changes."
+        "\n[bold green]Refresh complete.[/bold green] "
+        "Restart your agent session to pick up any changes."
     )
 
 
@@ -234,10 +339,7 @@ def init(
         )
     )
 
-    if non_interactive:
-        result = default_result(name=name, seed_profile=profile)
-    else:
-        result = run_wizard()
+    result = default_result(name=name, seed_profile=profile) if non_interactive else run_wizard()
 
     skopus_dir = resolve_skopus_path()
     console.print(f"\n[dim]Everything goes to →[/dim] {skopus_dir}")
@@ -282,6 +384,13 @@ def init(
                 project_path=cwd,
             )
             console.print(f"  [green]✓[/green] {agent_name}: {install_result.message}")
+            try:
+                cmd_paths = adapter.install_commands(skopus_dir)
+            except Exception as exc:
+                console.print(f"    [yellow]⚠[/yellow] commands install failed: {exc}")
+                cmd_paths = []
+            if cmd_paths:
+                console.print(f"    [green]✓[/green] {len(cmd_paths)} commands installed")
             wired_any = True
 
         if wired_any:
@@ -290,9 +399,8 @@ def init(
             # Install guard hooks for hook-capable agents
             for agent_name in result.agents:
                 key = agent_name.lower().replace(" ", "-")
-                if key in HOOK_CAPABLE_AGENTS:
-                    if install_guard(cwd, key):
-                        console.print(f"  [green]✓[/green] {agent_name}: guard hook installed")
+                if key in HOOK_CAPABLE_AGENTS and install_guard(cwd, key):
+                    console.print(f"  [green]✓[/green] {agent_name}: guard hook installed")
 
             # Wire graphify into the project
             if graphify_available():
@@ -309,7 +417,7 @@ def init(
         )
 
     # --- Summary ---
-    console.print(f"\n[bold green]Done.[/bold green] Skopus is ready.")
+    console.print("\n[bold green]Done.[/bold green] Skopus is ready.")
     console.print(
         f"  Charter:  {skopus_dir / 'charter' / 'CLAUDE.md'}\n"
         f"  Memory:   {skopus_dir / 'memory' / 'MEMORY.md'}\n"
@@ -321,9 +429,7 @@ def init(
             "[italic]/graphify .[/italic] to build your code map."
         )
     elif not wired_any:
-        console.print(
-            "[bold cyan]Next:[/bold cyan] [italic]cd my-project && skopus link[/italic]"
-        )
+        console.print("[bold cyan]Next:[/bold cyan] [italic]cd my-project && skopus link[/italic]")
 
 
 @app.command()
@@ -370,9 +476,21 @@ def link(
     )
     console.print(f"[green]✓[/green] {result.message}")
 
+    # Install / refresh slash-command surface for this agent (no-op for adapters
+    # whose agents lack a user-command surface, e.g. Aider, Copilot CLI)
+    try:
+        cmd_paths = adapter_impl.install_commands(skopus_dir)
+    except Exception as exc:
+        console.print(f"[yellow]⚠[/yellow] commands install failed: {exc}")
+        cmd_paths = []
+    if cmd_paths:
+        console.print(f"[green]✓[/green] {len(cmd_paths)} commands installed")
+
     # Install guard hook if the agent supports it
     if install_guard(resolved_project, agent):
-        console.print(f"[green]✓[/green] Guard hook installed (corrections auto-inject before risky commands)")
+        console.print(
+            "[green]✓[/green] Guard hook installed (corrections auto-inject before risky commands)"
+        )
 
     _track_linked_project(skopus_dir, resolved_project)
 
@@ -401,8 +519,9 @@ def unlink(
 
     # Remove guard hook
     from skopus.guard import uninstall_guard
+
     if uninstall_guard(resolved, agent):
-        console.print(f"[green]✓[/green] Guard hook removed")
+        console.print("[green]✓[/green] Guard hook removed")
 
     # Remove from projects.json
     skopus_dir = resolve_skopus_path()
@@ -416,69 +535,6 @@ def unlink(
                 projects_path.write_text(json.dumps(projects, indent=2) + "\n")
         except json.JSONDecodeError:
             pass
-
-
-@app.command()
-def update() -> None:
-    """Update Skopus to the latest version from PyPI and re-link all projects."""
-    import subprocess
-    import sys
-
-    console.print("[bold]Updating Skopus...[/bold]")
-    current = __version__
-
-    # Upgrade via pip
-    result = subprocess.run(
-        [sys.executable, "-m", "pip", "install", "--upgrade", "skopus"],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        console.print(f"[red]✗[/red] pip upgrade failed:\n{result.stderr}")
-        raise typer.Exit(code=1)
-
-    # Get new version
-    check = subprocess.run(
-        [sys.executable, "-c", "import skopus; print(skopus.__version__)"],
-        capture_output=True,
-        text=True,
-    )
-    new_version = check.stdout.strip() if check.returncode == 0 else "unknown"
-
-    if new_version == current:
-        console.print(f"[green]✓[/green] Already on latest: v{current}")
-    else:
-        console.print(f"[green]✓[/green] Updated: v{current} → v{new_version}")
-
-    # Re-link all projects to update CLAUDE.md blocks
-    skopus_dir = resolve_skopus_path()
-    if not skopus_dir.exists():
-        return
-
-    projects_path = skopus_dir / "projects.json"
-    if projects_path.exists():
-        try:
-            projects: list[str] = json.loads(projects_path.read_text())
-        except json.JSONDecodeError:
-            projects = []
-
-        if projects:
-            console.print(f"\nRe-linking {len(projects)} project(s)...")
-            for project_str in projects:
-                project = Path(project_str)
-                if project.exists():
-                    try:
-                        adapter_impl = get_adapter("claude-code")
-                        adapter_impl.install(
-                            charter_path=skopus_dir / "charter",
-                            vault_path=skopus_dir / "vault",
-                            project_path=project,
-                        )
-                        console.print(f"  [green]✓[/green] {project.name}")
-                    except Exception as e:
-                        console.print(f"  [red]✗[/red] {project.name}: {e}")
-                else:
-                    console.print(f"  [dim]⊘[/dim] {project.name} (not found)")
 
 
 @app.command("uninstall")
@@ -615,7 +671,7 @@ def bench_run(
 ) -> None:
     """Run a benchmark against the current skopus installation."""
     b = _load_bench()
-    LensConfig = b["LensConfig"]
+    LensConfig = b["LensConfig"]  # noqa: N806 — dict-extracted class binding, kept uppercase intentionally
 
     skopus_dir = resolve_skopus_path()
     if not skopus_dir.exists():
@@ -755,7 +811,7 @@ def doctor() -> None:
     )
 
     # Vault location read from adapters.lock
-    lock_data = read_adapters_lock(skopus_dir)
+    read_adapters_lock(skopus_dir)
     vault_dir = skopus_dir / "vault"
     vault_index = vault_dir / "wiki" / "index.md"
     table.add_row(

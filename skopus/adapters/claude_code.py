@@ -18,6 +18,7 @@ from skopus.adapters.base import (
     AdapterStatus,
     build_skopus_block,
 )
+from skopus.commands import load_command_templates, write_markdown_command
 
 
 def claude_md_path(project_path: Path) -> Path:
@@ -35,6 +36,34 @@ def claude_md_path(project_path: Path) -> Path:
 
 # Backwards-compat alias — some tests and callers reference the underscore name
 _build_skopus_block = build_skopus_block
+
+
+def _migrate_pre_phase0_root(project_path: Path, target: Path) -> Path | None:
+    """Strip a pre-Phase-0 Skopus block from project-root CLAUDE.md.
+
+    Pre-Phase-0 versions wired the block into ``<project>/CLAUDE.md``; the
+    current adapter prefers ``<project>/.claude/CLAUDE.md`` when ``.claude/``
+    exists. If both files exist with Skopus blocks, the orphan at the root
+    gets ignored by future installs and silently shows stale content to
+    agents. Detect and clean it whenever we're wiring somewhere other than
+    the root.
+
+    Returns the cleaned/removed root path, or None if nothing to migrate.
+    """
+    root_md = project_path / "CLAUDE.md"
+    if target == root_md or not root_md.exists():
+        return None
+    existing = root_md.read_text(encoding="utf-8")
+    if SKOPUS_SECTION_START not in existing or SKOPUS_SECTION_END not in existing:
+        return None
+    start = existing.index(SKOPUS_SECTION_START)
+    end = existing.index(SKOPUS_SECTION_END) + len(SKOPUS_SECTION_END)
+    remaining = (existing[:start] + existing[end:]).strip()
+    if remaining:
+        root_md.write_text(remaining + "\n", encoding="utf-8")
+    else:
+        root_md.unlink()
+    return root_md
 
 
 class ClaudeCodeAdapter(Adapter):
@@ -64,6 +93,8 @@ class ClaudeCodeAdapter(Adapter):
         claude_md.parent.mkdir(parents=True, exist_ok=True)
         backed_up: list[Path] = []
 
+        migrated_root = _migrate_pre_phase0_root(project_path, claude_md)
+
         # Backup existing CLAUDE.md on first install
         if claude_md.exists():
             existing = claude_md.read_text(encoding="utf-8")
@@ -75,7 +106,7 @@ class ClaudeCodeAdapter(Adapter):
         else:
             existing = ""
 
-        block = _build_skopus_block(charter_path, vault_path)
+        block = _build_skopus_block(charter_path, vault_path, project_path=project_path)
 
         if SKOPUS_SECTION_START in existing:
             # Idempotent update: replace existing block
@@ -89,11 +120,15 @@ class ClaudeCodeAdapter(Adapter):
 
         claude_md.write_text(new_content, encoding="utf-8")
 
+        message = f"Wired Skopus into {claude_md}"
+        if migrated_root is not None:
+            message += f" (cleaned legacy block from {migrated_root})"
+
         return AdapterInstallResult(
             status=AdapterStatus.INSTALLED,
             written=[claude_md],
             backed_up=backed_up,
-            message=f"Wired Skopus into {claude_md}",
+            message=message,
         )
 
     def uninstall(self, project_path: Path | None = None) -> AdapterInstallResult:
@@ -157,3 +192,8 @@ class ClaudeCodeAdapter(Adapter):
     def session_end_hook(self) -> str:
         """Claude Code uses slash commands; a future PreStop hook is planned."""
         return "/charter-evolve"
+
+    def install_commands(self, skopus_dir: Path) -> list[Path]:
+        """Install slash commands at ``~/.claude/commands/<name>.md``."""
+        target_dir = Path.home() / ".claude" / "commands"
+        return [write_markdown_command(target_dir, t) for t in load_command_templates()]

@@ -4,6 +4,139 @@ All notable changes to Skopus are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] — 2026-04-30
+
+Multi-agent slash-command surface, install-method-aware self-upgrade, and
+two robustness fixes that came out of pre-existing user installations.
+
+### Added
+- **Per-agent slash-command surface.** Skopus now installs its slash
+  commands (`/compile`, `/query`, `/ingest`, `/charter-evolve`,
+  `/bench-contribute`, `/lint`, `/wiki`) into each detected agent's native
+  surface, not just Claude Code:
+    - **Claude Code** — `~/.claude/commands/<name>.md` (markdown)
+    - **Cursor** — `~/.cursor/skills/<name>/SKILL.md` (Anthropic SKILL.md)
+    - **Codex CLI** — `$CODEX_HOME/skills/<name>/SKILL.md` (Anthropic SKILL.md)
+    - **Gemini CLI** — `~/.gemini/commands/<name>.toml` (Gemini TOML spec)
+    - Aider and GitHub Copilot CLI have no user-defined command surface and
+      are skipped silently.
+- **`skopus self-upgrade`** — install-method-aware package upgrade.
+  Detects editable / pipx / pip / unknown via `importlib.metadata` +
+  `sys.executable`, runs the right command (or prints the right command
+  for editable installs and exits cleanly), surfaces PEP-668 errors
+  with a pipx-recommendation hint, and refreshes per-agent surfaces
+  automatically after a successful upgrade.
+- **`skopus version`** now prints the detected install method,
+  installation location, and the upgrade command for that method.
+- **`Adapter.install_commands(skopus_dir) -> list[Path]`** — new base
+  method (no-op default) that adapters override to render canonical
+  command templates into their agent's surface.
+- **`skopus.commands` module** — single source of truth for command
+  templates plus per-format renderers (markdown passthrough, SKILL.md,
+  Gemini TOML).
+- **`skopus.install_info` module** — pure-function install detection
+  used by `self-upgrade` and `version`.
+
+### Changed
+- **`skopus update` no longer pip-upgrades.** The previous behavior ran
+  `pip install --upgrade skopus` unconditionally, which broke on
+  PEP-668-managed Pythons and would clobber editable installs. `update`
+  now refreshes per-agent surfaces (slash-commands, graphify skill) and
+  re-links every tracked project. Use `skopus self-upgrade` to change the
+  package version.
+- **Command templates moved** from `skopus/templates/vault/.claude/commands/*.md`
+  to `skopus/templates/commands/*.md`. The old location was an artifact
+  of when Claude Code was the only target; the new location is
+  agent-neutral.
+
+### Fixed
+- **Phase-0 root `CLAUDE.md` orphans cleaned during `skopus link`.**
+  Pre-Phase-0 wirings wrote into `<project>/CLAUDE.md`; the current
+  adapter prefers `<project>/.claude/CLAUDE.md`. Re-linking now strips
+  any leftover Skopus block from the legacy root location and removes
+  the file when it had no other content.
+- **Aspirational MCP-tool references removed from the adapter prompt.**
+  The Phase-0 thin block told agents to "prefer MCP tools when available"
+  for `skopus_search_memory`, `skopus_query_vault`, etc. — none of which
+  ship yet. Pedantic agents read the line, found no tools, and reported
+  Skopus as inactive even when fully wired. Add references back when the
+  MCP server actually lands.
+- **`update` no longer double-processes alias keys.** The `ADAPTERS`
+  registry has alias keys (`copilot` + `copilot-cli`, `gemini` +
+  `gemini-cli`); the per-agent loop now dedupes by class so each adapter
+  runs exactly once.
+
+### Testing
+- **167 tests passing**, 1 skipped. New: `test_adapter_commands.py`
+  covers every format converter, per-adapter target paths,
+  `CODEX_HOME` env override, idempotency, and an integration test that
+  runs `skopus link` end-to-end and asserts the command surface
+  populates. `test_install_info.py` covers detection across all four
+  install methods plus the editable-inside-pipx edge case and corrupt
+  `direct_url.json`.
+
+## [0.4.0] — 2026-04-28
+
+Audit CLI, expanded benchmark coverage. _(Backfilled changelog entry — original release was committed but not published to PyPI.)_
+
+### Added
+- `skopus audit` CLI — health-check memory index sync and scope tags.
+- 120 Correction-Persistence scenarios (up from prior set).
+- LoCoMo and LongMemEval benchmark adapters.
+- Guard hook for risky commands (`8744db7`) — auto-injects relevant
+  feedback memory before destructive shell calls.
+- Phase-0 thin context block (`77c2d94`) — adapter target moved from
+  `<project>/CLAUDE.md` to `<project>/.claude/CLAUDE.md` (when present);
+  block size reduced from ~3K tokens to ~500 tokens via pointer-only
+  references to charter/memory/vault paths.
+
+## [0.3.0] — 2026-04-13
+
+Project-scoped memory and lifecycle commands.
+
+### Added
+- `skopus link <project>` creates `~/.skopus/memory/projects/<slug>/`
+  with project-specific MEMORY, feedback, and context.
+- CLAUDE.md injection includes a "Project Memory" section alongside
+  global memory.
+- `skopus uninstall` — removes wiring from every linked project,
+  optionally deletes `~/.skopus/`, and uninstalls the pip package.
+- `_write_feedback_file()` accepts a `project_slug` for
+  project-scoped feedback writes.
+
+## [0.2.0] — 2026-04-13
+
+Simplification release: one directory, one command. (`29683e0`)
+
+### Changed
+- Vault merged into `~/.skopus/vault/` — one directory, one git repo.
+- `skopus init` is one-shot: wizard + scaffold + auto-link current
+  project + install graphify.
+- 9-question wizard (down from 10 — vault location question removed).
+- Charter content inlined into project CLAUDE.md (no `@` external
+  references, zero permission prompts).
+- `_graphify_cmd()` falls back to `python -m graphify` for pipx
+  installs.
+
+## [0.1.5] — 2026-04-13
+
+Three real-user bugs from team installation testing. (`a0cc6a6`)
+
+## [0.1.4] — 2026-04-13
+
+`/charter-evolve` and `/bench-contribute` shipped as proper Claude Code
+slash commands. (`72ea4bf`)
+
+## [0.1.3] — 2026-04-12
+
+Added `skopus update` command. (`7271b9e` — note: this command's pip-upgrade
+behavior was later replaced in v0.5.0 by `skopus self-upgrade`.)
+
+## [0.1.2] — 2026-04-11
+
+Bug-fix bundle: graphify install made unconditional, full deps required,
+README typo fixed. (`1846149`)
+
 ## [0.1.1] — 2026-04-10
 
 Bug-fix release: `/graphify` was not actually invokable as a slash command

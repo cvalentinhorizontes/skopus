@@ -12,10 +12,8 @@ Supported agents:
 from __future__ import annotations
 
 import json
-import shutil
 from importlib.resources import files
 from pathlib import Path
-
 
 # Agents that support PreToolUse hooks
 HOOK_CAPABLE_AGENTS = {"claude-code", "cursor"}
@@ -29,9 +27,7 @@ SETTINGS_FILES = {
 
 def _load_guard_script() -> str:
     """Load the bundled guard hook script."""
-    return (files("skopus") / "templates" / "hooks" / "skopus-guard.sh").read_text(
-        encoding="utf-8"
-    )
+    return (files("skopus") / "templates" / "hooks" / "skopus-guard.sh").read_text(encoding="utf-8")
 
 
 def _guard_hook_entry() -> dict:
@@ -86,18 +82,13 @@ def install_guard(project_path: Path, agent: str) -> bool:
     # Check if guard is already installed (idempotent)
     guard_command = "$HOME/.skopus/hooks/skopus-guard.sh"
     already_installed = any(
-        any(
-            h.get("command", "") == guard_command
-            for h in entry.get("hooks", [])
-        )
+        any(h.get("command", "") == guard_command for h in entry.get("hooks", []))
         for entry in pre_tool_use
     )
 
     if not already_installed:
         pre_tool_use.append(_guard_hook_entry())
-        settings_path.write_text(
-            json.dumps(settings, indent=2) + "\n", encoding="utf-8"
-        )
+        settings_path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
 
     return True
 
@@ -129,17 +120,12 @@ def uninstall_guard(project_path: Path, agent: str) -> bool:
     filtered = [
         entry
         for entry in pre_tool_use
-        if not any(
-            h.get("command", "") == guard_command
-            for h in entry.get("hooks", [])
-        )
+        if not any(h.get("command", "") == guard_command for h in entry.get("hooks", []))
     ]
 
     if len(filtered) < len(pre_tool_use):
         settings["hooks"]["PreToolUse"] = filtered
-        settings_path.write_text(
-            json.dumps(settings, indent=2) + "\n", encoding="utf-8"
-        )
+        settings_path.write_text(json.dumps(settings, indent=2) + "\n", encoding="utf-8")
         return True
 
     return False

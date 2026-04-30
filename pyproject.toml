@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "skopus"
-version = "0.4.0"
+version = "0.5.0"
 description = "Persistent context for AI coding assistants. Install it, run it, your agent remembers you."
 readme = "README.md"
 license = { text = "MIT" }
@@ -90,7 +90,10 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "UP", "B", "C4", "SIM", "RUF"]
-ignore = ["E501"]  # line length handled by formatter
+ignore = [
+    "E501",  # line length handled by formatter
+    "B008",  # function-call-in-default — Typer/FastAPI idiom (Argument/Option/Depends in signature defaults is intentional)
+]
 
 [tool.mypy]
 python_version = "3.10"

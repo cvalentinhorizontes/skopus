@@ -1,7 +1,5 @@
 """Tests for skopus.evolve."""
 
-from pathlib import Path
-
 from skopus.evolve import (
     EvolveEntry,
     _append_to_charter,

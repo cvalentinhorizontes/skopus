@@ -1,7 +1,5 @@
 """CLI smoke tests using typer's CliRunner (v0.2.0 — unified directory)."""
 
-from pathlib import Path
-
 from typer.testing import CliRunner
 
 from skopus.cli import app

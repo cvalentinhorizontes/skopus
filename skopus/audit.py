@@ -73,9 +73,7 @@ def _first_line_of_file(path: Path) -> str:
     return fm.get("description", path.stem)
 
 
-def sync_index(
-    skopus_dir: Path, *, fix: bool = False
-) -> dict[str, list[str]]:
+def sync_index(skopus_dir: Path, *, fix: bool = False) -> dict[str, list[str]]:
     """Diff feedback files on disk vs entries in MEMORY.md.
 
     Returns:
