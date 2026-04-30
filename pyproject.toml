@@ -61,6 +61,7 @@ bench = [
     # Enabled in v0.1.0. See docs/DESIGN.md §4.
     "datasets>=2.14",
     "numpy>=1.26",
+    "chromadb>=0.4",  # vector store for retrieval baselines (LongMemEval, LoCoMo)
 ]
 dev = [
     "pytest>=8.0",
