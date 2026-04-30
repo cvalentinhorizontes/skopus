@@ -120,8 +120,89 @@ def _init_project_memory(skopus_dir: Path, project_path: Path) -> Path | None:
 
 @app.command()
 def version() -> None:
-    """Show the version."""
+    """Show the version + how to upgrade."""
+    from skopus.install_info import detect_install_method
+
+    info = detect_install_method()
     console.print(f"skopus [bold cyan]v{__version__}[/bold cyan]")
+    console.print(f"  Install: [bold]{info.method}[/bold]")
+    if info.location:
+        console.print(f"  Location: [dim]{info.location}[/dim]")
+    if info.notes:
+        console.print(f"  Notes: [yellow]{info.notes}[/yellow]")
+    console.print(f"  Upgrade: [cyan]{info.upgrade_hint}[/cyan]  (or run [italic]skopus self-upgrade[/italic])")
+
+
+@app.command("self-upgrade")
+def self_upgrade(
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Skip confirmation; just run the detected upgrade command.",
+    ),
+) -> None:
+    """Upgrade the Skopus package itself, then refresh per-agent surfaces.
+
+    Detects the install method (editable / pipx / pip) and runs the right
+    upgrade command for it. Editable installs are not auto-upgraded — those
+    track the local source tree, so upgrade is ``git pull`` and the user's
+    job. After a successful upgrade, ``skopus update`` is invoked
+    automatically to refresh slash-commands and re-link tracked projects.
+    """
+    import subprocess
+
+    from skopus.install_info import detect_install_method
+
+    info = detect_install_method()
+    console.print(f"Detected install method: [bold]{info.method}[/bold]")
+    if info.location:
+        console.print(f"  Location: [dim]{info.location}[/dim]")
+
+    if info.method == "editable":
+        console.print(
+            "[yellow]⚠[/yellow] Editable install detected — Skopus runs from a "
+            "local source tree."
+        )
+        console.print(f"  To upgrade, run: [cyan]{info.upgrade_hint}[/cyan]")
+        console.print("Then run [italic]skopus update[/italic] to refresh per-agent surfaces.")
+        raise typer.Exit(code=0)
+
+    if info.method == "unknown":
+        console.print(
+            "[red]✗[/red] Could not detect how Skopus was installed."
+        )
+        console.print(
+            f"  Try: [cyan]pipx upgrade skopus[/cyan] or "
+            f"[cyan]pip install -U skopus[/cyan]"
+        )
+        raise typer.Exit(code=1)
+
+    if not yes:
+        console.print(f"\nWill run: [cyan]{info.upgrade_hint}[/cyan]")
+        confirm = typer.confirm("Proceed?", default=True)
+        if not confirm:
+            console.print("Aborted.")
+            raise typer.Exit(code=1)
+
+    console.print(f"\nRunning [cyan]{info.upgrade_hint}[/cyan]...")
+    result = subprocess.run(info.upgrade_command, capture_output=True, text=True)
+    if result.returncode != 0:
+        console.print(f"[red]✗[/red] Upgrade failed (exit {result.returncode}):")
+        err = result.stderr or result.stdout
+        console.print(err.strip()[:600] or "(no output)")
+        if "externally-managed-environment" in err.lower():
+            console.print(
+                "\n[yellow]Hint:[/yellow] System Python is PEP-668 managed. "
+                "Reinstall via pipx for a permanent fix:"
+            )
+            console.print("  [cyan]pip uninstall skopus && pipx install skopus[/cyan]")
+        raise typer.Exit(code=1)
+
+    console.print(f"[green]✓[/green] Skopus package upgraded.")
+    console.print("\nRefreshing per-agent surfaces...\n")
+    # Defer to the existing update command so the refresh logic is one place
+    update()
 
 
 @app.command()
