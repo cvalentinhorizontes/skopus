@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 220" role="img" aria-label="Skopus" preserveAspectRatio="xMidYMid meet">
+  <title>Skopus</title>
+  <defs>
+    <filter id="oliveGlow" x="-15%" y="-15%" width="130%" height="130%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2.4" result="blur"/>
+      <feFlood flood-color="#6b8e23" flood-opacity="0.85"/>
+      <feComposite in2="blur" operator="in" result="glow"/>
+      <feMerge>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="glow"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <linearGradient id="oliveEdge" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#a8b86b"/>
+      <stop offset="50%" stop-color="#6b8e23"/>
+      <stop offset="100%" stop-color="#4a6519"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ANSI-Shadow SKOPUS rendered as monospace SVG text. White body,
+       olive-green stroke + glow. -->
+  <g filter="url(#oliveGlow)">
+    <text x="600" y="62"
+          text-anchor="middle"
+          font-family="ui-monospace, 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', monospace"
+          font-size="36"
+          font-weight="700"
+          fill="#ffffff"
+          stroke="url(#oliveEdge)"
+          stroke-width="1.4"
+          paint-order="stroke fill"
+          xml:space="preserve"
+          letter-spacing="0">
+      <tspan x="600" dy="0">███████╗██╗  ██╗ ██████╗ ██████╗ ██╗   ██╗███████╗</tspan>
+      <tspan x="600" dy="28">██╔════╝██║ ██╔╝██╔═══██╗██╔══██╗██║   ██║██╔════╝</tspan>
+      <tspan x="600" dy="28">███████╗█████╔╝ ██║   ██║██████╔╝██║   ██║███████╗</tspan>
+      <tspan x="600" dy="28">╚════██║██╔═██╗ ██║   ██║██╔═══╝ ██║   ██║╚════██║</tspan>
+      <tspan x="600" dy="28">███████║██║  ██╗╚██████╔╝██║     ╚██████╔╝███████║</tspan>
+      <tspan x="600" dy="28">╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚═╝      ╚═════╝ ╚══════╝</tspan>
+    </text>
+  </g>
+</svg>
