@@ -161,40 +161,48 @@ def run_wizard() -> WizardResult:
         return default_result()
 
     # Q1: name
-    name = questionary.text(
-        "What should I call you?", default="Developer"
-    ).ask() or "Developer"
+    name = questionary.text("What should I call you?", default="Developer").ask() or "Developer"
 
     # Q2: role
-    role = questionary.select(
-        "Your primary role?", choices=ROLE_CHOICES, default="solo-dev"
-    ).ask() or "solo-dev"
+    role = (
+        questionary.select("Your primary role?", choices=ROLE_CHOICES, default="solo-dev").ask()
+        or "solo-dev"
+    )
 
     # Q3: stack
-    stack = questionary.text(
-        "Primary languages / stack (comma-separated)",
-        default="Python, TypeScript",
-    ).ask() or "Python, TypeScript"
+    stack = (
+        questionary.text(
+            "Primary languages / stack (comma-separated)",
+            default="Python, TypeScript",
+        ).ask()
+        or "Python, TypeScript"
+    )
 
     # Q4: communication style
-    comm_style = questionary.select(
-        "Communication style?", choices=COMM_STYLE_CHOICES, default="mix"
-    ).ask() or "mix"
+    comm_style = (
+        questionary.select("Communication style?", choices=COMM_STYLE_CHOICES, default="mix").ask()
+        or "mix"
+    )
 
     # Q5: non-negotiables (seeded from role)
-    role_defaults = DEFAULT_NON_NEGOTIABLES_BY_ROLE.get(role, DEFAULT_NON_NEGOTIABLES_BY_ROLE["other"])
+    role_defaults = DEFAULT_NON_NEGOTIABLES_BY_ROLE.get(
+        role, DEFAULT_NON_NEGOTIABLES_BY_ROLE["other"]
+    )
     default_nn_text = "\n".join(role_defaults)
-    nn_raw = questionary.text(
-        "Top non-negotiables (one per line, edit as needed):",
-        default=default_nn_text,
-        multiline=True,
-    ).ask() or default_nn_text
+    nn_raw = (
+        questionary.text(
+            "Top non-negotiables (one per line, edit as needed):",
+            default=default_nn_text,
+            multiline=True,
+        ).ask()
+        or default_nn_text
+    )
     non_negotiables = [line.strip() for line in nn_raw.splitlines() if line.strip()]
 
     # Q6: timezone
-    timezone = questionary.text(
-        "Your time zone?", default=_detect_timezone()
-    ).ask() or _detect_timezone()
+    timezone = (
+        questionary.text("Your time zone?", default=_detect_timezone()).ask() or _detect_timezone()
+    )
 
     # Q7: agents
     agents = questionary.checkbox(
@@ -203,18 +211,24 @@ def run_wizard() -> WizardResult:
     ).ask() or ["Claude Code"]
 
     # Q8: graphify scope
-    graphify_raw = questionary.text(
-        "Which codebases should graphify map? (comma-separated paths, or blank to skip for now)",
-        default="",
-    ).ask() or ""
+    graphify_raw = (
+        questionary.text(
+            "Which codebases should graphify map? (comma-separated paths, or blank to skip for now)",
+            default="",
+        ).ask()
+        or ""
+    )
     graphify_scope = [p.strip() for p in graphify_raw.split(",") if p.strip()]
 
     # Q9: seed profile
-    seed_profile = questionary.select(
-        "Initial seed profile?",
-        choices=SEED_PROFILE_CHOICES,
-        default=role if role in SEED_PROFILE_CHOICES else "blank",
-    ).ask() or "blank"
+    seed_profile = (
+        questionary.select(
+            "Initial seed profile?",
+            choices=SEED_PROFILE_CHOICES,
+            default=role if role in SEED_PROFILE_CHOICES else "blank",
+        ).ask()
+        or "blank"
+    )
 
     return WizardResult(
         name=name,

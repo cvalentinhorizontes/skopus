@@ -98,8 +98,7 @@ def test_install_removes_orphan_root_when_only_skopus_content(tmp_path):
     project = tmp_path / "project"
     (project / ".claude").mkdir(parents=True)
     legacy_block = (
-        f"{SKOPUS_SECTION_START}\n## Skopus Context\nstale content\n"
-        f"{SKOPUS_SECTION_END}\n"
+        f"{SKOPUS_SECTION_START}\n## Skopus Context\nstale content\n{SKOPUS_SECTION_END}\n"
     )
     (project / "CLAUDE.md").write_text(legacy_block)
 

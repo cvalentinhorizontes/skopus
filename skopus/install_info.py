@@ -98,14 +98,12 @@ def _editable_source_path(dist: md.Distribution) -> Path | None:
 def _is_pipx_executable(executable: str) -> bool:
     """Return True if ``executable`` lives inside a pipx-managed venv."""
     parts = Path(executable).parts
-    if "pipx" in parts and "venvs" in parts:
-        return True
-    return False
+    return bool("pipx" in parts and "venvs" in parts)
 
 
 def _dist_location(dist: md.Distribution) -> str | None:
     """Best-effort site-packages directory for ``dist``."""
     try:
         return str(dist.locate_file(""))
-    except Exception:  # noqa: BLE001 — defensive, this metadata is finicky
+    except Exception:
         return None

@@ -2,8 +2,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from skopus.audit import check_scope_tags, run_audit, sync_index
 
 
@@ -26,15 +24,17 @@ def _write_feedback(feedback_dir: Path, name: str, *, scope: str | None = None) 
     ]
     if scope is not None:
         lines.append(f"scope: {scope}")
-    lines.extend([
-        "---",
-        "",
-        f"# {name}",
-        "",
-        "**Why:** Testing.",
-        "",
-        "**How to apply:** Test only.",
-    ])
+    lines.extend(
+        [
+            "---",
+            "",
+            f"# {name}",
+            "",
+            "**Why:** Testing.",
+            "",
+            "**How to apply:** Test only.",
+        ]
+    )
     (feedback_dir / f"{name}.md").write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -48,14 +48,16 @@ def _write_memory_md(skopus_dir: Path, feedback_entries: list[str]) -> None:
     ]
     for entry in feedback_entries:
         lines.append(f"- [feedback/{entry}](feedback/{entry}) — hook for {entry}")
-    lines.extend([
-        "",
-        "## Project Memory",
-        "",
-        "*(empty)*",
-        "",
-        "---",
-    ])
+    lines.extend(
+        [
+            "",
+            "## Project Memory",
+            "",
+            "*(empty)*",
+            "",
+            "---",
+        ]
+    )
     (skopus_dir / "memory" / "MEMORY.md").write_text("\n".join(lines), encoding="utf-8")
 
 

@@ -7,6 +7,8 @@ can also be copied to ``~/.copilot/skills/`` if that directory exists.
 
 from __future__ import annotations
 
+from typing import ClassVar
+
 from skopus.adapters.base import MarkdownAdapter
 
 
@@ -17,5 +19,5 @@ class CopilotCliAdapter(MarkdownAdapter):
     display_name = "GitHub Copilot CLI"
     context_file_name = "AGENTS.md"
     prefer_dotdir_name = None
-    detect_config_dirs = ["~/.copilot", "~/.config/gh/copilot"]
-    detect_binaries = ["copilot", "gh"]
+    detect_config_dirs: ClassVar[list[str]] = ["~/.copilot", "~/.config/gh/copilot"]
+    detect_binaries: ClassVar[list[str]] = ["copilot", "gh"]

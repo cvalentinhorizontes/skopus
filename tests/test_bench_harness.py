@@ -1,7 +1,5 @@
 """Tests for the unified benchmark harness."""
 
-from pathlib import Path
-
 import pytest
 
 from bench.config import BenchmarkReport, LensConfig

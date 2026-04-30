@@ -47,7 +47,12 @@ def build_system_prompt(
     ]
 
     # --- CHARTER (lens 1) ---
-    if lens in {LensConfig.CHARTER, LensConfig.CHARTER_MEMORY, LensConfig.CHARTER_MEMORY_VAULT, LensConfig.FULL}:
+    if lens in {
+        LensConfig.CHARTER,
+        LensConfig.CHARTER_MEMORY,
+        LensConfig.CHARTER_MEMORY_VAULT,
+        LensConfig.FULL,
+    }:
         charter_md = skopus_dir / "charter" / "CLAUDE.md"
         charter_text = _read_if_exists(charter_md)
         if charter_text:
@@ -75,12 +80,11 @@ def build_system_prompt(
                 )
 
     # --- VAULT (lens 3) ---
-    if lens in {LensConfig.CHARTER_MEMORY_VAULT, LensConfig.FULL}:
-        if vault_dir:
-            vault_idx = vault_dir / "wiki" / "index.md"
-            vault_text = _read_if_exists(vault_idx)
-            if vault_text:
-                parts.append("## Vault Index (decisions and learnings)\n" + vault_text)
+    if lens in {LensConfig.CHARTER_MEMORY_VAULT, LensConfig.FULL} and vault_dir:
+        vault_idx = vault_dir / "wiki" / "index.md"
+        vault_text = _read_if_exists(vault_idx)
+        if vault_text:
+            parts.append("## Vault Index (decisions and learnings)\n" + vault_text)
 
     # --- GRAPH (lens 4, full only) ---
     if lens == LensConfig.FULL:

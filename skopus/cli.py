@@ -29,13 +29,14 @@ from skopus.graphify_bridge import (
     graphify_available,
     install_graphify_for_claude,
 )
-from skopus.guard import install_guard, HOOK_CAPABLE_AGENTS
+from skopus.guard import HOOK_CAPABLE_AGENTS, install_guard
 from skopus.renderer import (
     materialize,
     read_adapters_lock,
     resolve_skopus_path,
 )
-from skopus.wizard import WizardResult, default_result, run_wizard
+from skopus.wizard import default_result, run_wizard
+
 
 # Lazy imports for bench subcommand (bench deps are optional)
 def _load_bench():
@@ -58,6 +59,7 @@ def _load_bench():
         "run_benchmark": run_benchmark,
         "save_report": save_report,
     }
+
 
 app = typer.Typer(
     name="skopus",
@@ -130,7 +132,9 @@ def version() -> None:
         console.print(f"  Location: [dim]{info.location}[/dim]")
     if info.notes:
         console.print(f"  Notes: [yellow]{info.notes}[/yellow]")
-    console.print(f"  Upgrade: [cyan]{info.upgrade_hint}[/cyan]  (or run [italic]skopus self-upgrade[/italic])")
+    console.print(
+        f"  Upgrade: [cyan]{info.upgrade_hint}[/cyan]  (or run [italic]skopus self-upgrade[/italic])"
+    )
 
 
 @app.command("self-upgrade")
@@ -161,20 +165,16 @@ def self_upgrade(
 
     if info.method == "editable":
         console.print(
-            "[yellow]⚠[/yellow] Editable install detected — Skopus runs from a "
-            "local source tree."
+            "[yellow]⚠[/yellow] Editable install detected — Skopus runs from a local source tree."
         )
         console.print(f"  To upgrade, run: [cyan]{info.upgrade_hint}[/cyan]")
         console.print("Then run [italic]skopus update[/italic] to refresh per-agent surfaces.")
         raise typer.Exit(code=0)
 
     if info.method == "unknown":
+        console.print("[red]✗[/red] Could not detect how Skopus was installed.")
         console.print(
-            "[red]✗[/red] Could not detect how Skopus was installed."
-        )
-        console.print(
-            f"  Try: [cyan]pipx upgrade skopus[/cyan] or "
-            f"[cyan]pip install -U skopus[/cyan]"
+            "  Try: [cyan]pipx upgrade skopus[/cyan] or [cyan]pip install -U skopus[/cyan]"
         )
         raise typer.Exit(code=1)
 
@@ -199,7 +199,7 @@ def self_upgrade(
             console.print("  [cyan]pip uninstall skopus && pipx install skopus[/cyan]")
         raise typer.Exit(code=1)
 
-    console.print(f"[green]✓[/green] Skopus package upgraded.")
+    console.print("[green]✓[/green] Skopus package upgraded.")
     console.print("\nRefreshing per-agent surfaces...\n")
     # Defer to the existing update command so the refresh logic is one place
     update()
@@ -228,9 +228,13 @@ def update() -> None:
 
     if graphify_available():
         if ensure_graphify_skill_installed():
-            console.print("  [green]✓[/green] /graphify skill installed at ~/.claude/skills/graphify/")
+            console.print(
+                "  [green]✓[/green] /graphify skill installed at ~/.claude/skills/graphify/"
+            )
         else:
-            console.print("  [yellow]⚠[/yellow] graphify skill install failed — try: graphify install")
+            console.print(
+                "  [yellow]⚠[/yellow] graphify skill install failed — try: graphify install"
+            )
     else:
         console.print("  [yellow]⚠[/yellow] graphify CLI not on PATH")
 
@@ -250,7 +254,7 @@ def update() -> None:
             continue
         try:
             paths = adapter.install_commands(skopus_dir)
-        except Exception as exc:  # noqa: BLE001 — surface adapter-level failure, keep going
+        except Exception as exc:
             console.print(f"  [red]✗[/red] {adapter.display_name}: {exc}")
             continue
         if paths:
@@ -266,9 +270,7 @@ def update() -> None:
         else:
             console.print(f"  [dim]⊘ {adapter.display_name}: no user-command surface[/dim]")
     if not any_written:
-        console.print(
-            "  [yellow]⚠[/yellow] No detected agents have a user-command surface."
-        )
+        console.print("  [yellow]⚠[/yellow] No detected agents have a user-command surface.")
 
     # Re-link every tracked project so context-file blocks pick up new template
     projects_path = skopus_dir / "projects.json"
@@ -292,7 +294,7 @@ def update() -> None:
                         project_path=project,
                     )
                     console.print(f"  [green]✓[/green] {project.name}")
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     console.print(f"  [red]✗[/red] {project.name}: {exc}")
 
     console.print(
@@ -337,10 +339,7 @@ def init(
         )
     )
 
-    if non_interactive:
-        result = default_result(name=name, seed_profile=profile)
-    else:
-        result = run_wizard()
+    result = default_result(name=name, seed_profile=profile) if non_interactive else run_wizard()
 
     skopus_dir = resolve_skopus_path()
     console.print(f"\n[dim]Everything goes to →[/dim] {skopus_dir}")
@@ -387,7 +386,7 @@ def init(
             console.print(f"  [green]✓[/green] {agent_name}: {install_result.message}")
             try:
                 cmd_paths = adapter.install_commands(skopus_dir)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 console.print(f"    [yellow]⚠[/yellow] commands install failed: {exc}")
                 cmd_paths = []
             if cmd_paths:
@@ -400,9 +399,8 @@ def init(
             # Install guard hooks for hook-capable agents
             for agent_name in result.agents:
                 key = agent_name.lower().replace(" ", "-")
-                if key in HOOK_CAPABLE_AGENTS:
-                    if install_guard(cwd, key):
-                        console.print(f"  [green]✓[/green] {agent_name}: guard hook installed")
+                if key in HOOK_CAPABLE_AGENTS and install_guard(cwd, key):
+                    console.print(f"  [green]✓[/green] {agent_name}: guard hook installed")
 
             # Wire graphify into the project
             if graphify_available():
@@ -419,7 +417,7 @@ def init(
         )
 
     # --- Summary ---
-    console.print(f"\n[bold green]Done.[/bold green] Skopus is ready.")
+    console.print("\n[bold green]Done.[/bold green] Skopus is ready.")
     console.print(
         f"  Charter:  {skopus_dir / 'charter' / 'CLAUDE.md'}\n"
         f"  Memory:   {skopus_dir / 'memory' / 'MEMORY.md'}\n"
@@ -431,9 +429,7 @@ def init(
             "[italic]/graphify .[/italic] to build your code map."
         )
     elif not wired_any:
-        console.print(
-            "[bold cyan]Next:[/bold cyan] [italic]cd my-project && skopus link[/italic]"
-        )
+        console.print("[bold cyan]Next:[/bold cyan] [italic]cd my-project && skopus link[/italic]")
 
 
 @app.command()
@@ -484,7 +480,7 @@ def link(
     # whose agents lack a user-command surface, e.g. Aider, Copilot CLI)
     try:
         cmd_paths = adapter_impl.install_commands(skopus_dir)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         console.print(f"[yellow]⚠[/yellow] commands install failed: {exc}")
         cmd_paths = []
     if cmd_paths:
@@ -492,7 +488,9 @@ def link(
 
     # Install guard hook if the agent supports it
     if install_guard(resolved_project, agent):
-        console.print(f"[green]✓[/green] Guard hook installed (corrections auto-inject before risky commands)")
+        console.print(
+            "[green]✓[/green] Guard hook installed (corrections auto-inject before risky commands)"
+        )
 
     _track_linked_project(skopus_dir, resolved_project)
 
@@ -521,8 +519,9 @@ def unlink(
 
     # Remove guard hook
     from skopus.guard import uninstall_guard
+
     if uninstall_guard(resolved, agent):
-        console.print(f"[green]✓[/green] Guard hook removed")
+        console.print("[green]✓[/green] Guard hook removed")
 
     # Remove from projects.json
     skopus_dir = resolve_skopus_path()
@@ -672,7 +671,7 @@ def bench_run(
 ) -> None:
     """Run a benchmark against the current skopus installation."""
     b = _load_bench()
-    LensConfig = b["LensConfig"]
+    LensConfig = b["LensConfig"]  # noqa: N806 — dict-extracted class binding, kept uppercase intentionally
 
     skopus_dir = resolve_skopus_path()
     if not skopus_dir.exists():
@@ -812,7 +811,7 @@ def doctor() -> None:
     )
 
     # Vault location read from adapters.lock
-    lock_data = read_adapters_lock(skopus_dir)
+    read_adapters_lock(skopus_dir)
     vault_dir = skopus_dir / "vault"
     vault_index = vault_dir / "wiki" / "index.md"
     table.add_row(

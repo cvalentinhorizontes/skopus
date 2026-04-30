@@ -13,7 +13,7 @@ from pathlib import Path
 
 from bench.config import BenchmarkReport, BenchmarkResult, LensConfig, bench_results_dir
 from bench.correction_persistence.runner import run_correction_persistence
-from bench.driver import LLMDriver, pick_driver
+from bench.driver import LLMDriver
 from bench.locomo.runner import run_locomo as _run_locomo_impl
 
 AVAILABLE_BENCHMARKS = {
@@ -48,15 +48,27 @@ def run_benchmark(
     normalized = name.lower().replace("_", "-")
     if normalized in {"cp", "correction-persistence"}:
         return run_correction_persistence(
-            driver=driver, lens=lens, skopus_dir=skopus_dir, vault_dir=vault_dir,
-            limit=limit, judge_driver=judge_driver, scoring=scoring, parallel=parallel,
+            driver=driver,
+            lens=lens,
+            skopus_dir=skopus_dir,
+            vault_dir=vault_dir,
+            limit=limit,
+            judge_driver=judge_driver,
+            scoring=scoring,
+            parallel=parallel,
         )
     if normalized == "longmemeval":
         return _stub_report("longmemeval", lens, "LongMemEval wrapper planned for v0.1.0")
     if normalized == "locomo":
         return _run_locomo(
-            driver=driver, lens=lens, skopus_dir=skopus_dir, vault_dir=vault_dir,
-            limit=limit, judge_driver=judge_driver, scoring=scoring, parallel=parallel,
+            driver=driver,
+            lens=lens,
+            skopus_dir=skopus_dir,
+            vault_dir=vault_dir,
+            limit=limit,
+            judge_driver=judge_driver,
+            scoring=scoring,
+            parallel=parallel,
         )
     if normalized == "msc":
         return _stub_report("msc", lens, "MSC wrapper planned for v0.1.0")
@@ -144,9 +156,7 @@ def run_all(
     reports: list[BenchmarkReport] = []
     for name in ["cp", "longmemeval", "locomo", "msc", "ruler"]:
         reports.append(
-            run_benchmark(
-                name, driver, lens, skopus_dir, vault_dir=vault_dir, limit=limit
-            )
+            run_benchmark(name, driver, lens, skopus_dir, vault_dir=vault_dir, limit=limit)
         )
     return reports
 
@@ -166,8 +176,15 @@ def run_ablation(
     results: dict[LensConfig, BenchmarkReport] = {}
     for lens in LensConfig.all_configs():
         results[lens] = run_benchmark(
-            benchmark_name, driver, lens, skopus_dir, vault_dir=vault_dir,
-            limit=limit, judge_driver=judge_driver, scoring=scoring, parallel=parallel,
+            benchmark_name,
+            driver,
+            lens,
+            skopus_dir,
+            vault_dir=vault_dir,
+            limit=limit,
+            judge_driver=judge_driver,
+            scoring=scoring,
+            parallel=parallel,
         )
     return results
 
@@ -188,9 +205,7 @@ def save_report(
     elif isinstance(report, list):
         payload = {"reports": [_report_to_dict(r) for r in report]}
     elif isinstance(report, dict):
-        payload = {
-            "ablation": {lens.value: _report_to_dict(r) for lens, r in report.items()}
-        }
+        payload = {"ablation": {lens.value: _report_to_dict(r) for lens, r in report.items()}}
     else:
         raise TypeError(f"unsupported report type: {type(report)}")
 

@@ -21,7 +21,6 @@ Scoring modes:
 
 from __future__ import annotations
 
-import asyncio
 import json
 from dataclasses import dataclass
 from importlib.resources import files
@@ -62,6 +61,7 @@ def load_dataset(dataset_path: Path | None = None) -> list[CPScenario]:
 # ---------------------------------------------------------------------------
 # Keyword scorer (original, fast, deterministic)
 # ---------------------------------------------------------------------------
+
 
 def score_response(response_text: str, criterion: dict[str, list[str]]) -> tuple[bool, float, str]:
     """Score a response against the scenario's success criterion.
@@ -151,6 +151,7 @@ def score_response_llm(
 # Scenario runner
 # ---------------------------------------------------------------------------
 
+
 def run_scenario(
     scenario: CPScenario,
     driver: LLMDriver,
@@ -179,7 +180,7 @@ def run_scenario(
     if scoring == "llm" and judge_driver:
         passed, score, notes = score_response_llm(response.text, scenario, judge_driver)
     elif scoring == "both" and judge_driver:
-        kw_passed, kw_score, kw_notes = score_response(response.text, scenario.success_criterion)
+        kw_passed, _kw_score, kw_notes = score_response(response.text, scenario.success_criterion)
         llm_passed, llm_score, llm_notes = score_response_llm(response.text, scenario, judge_driver)
         passed = llm_passed  # LLM judge is authoritative
         score = llm_score
@@ -193,7 +194,7 @@ def run_scenario(
         passed=passed,
         score=score,
         notes=notes,
-        tokens_in=response.tokens_in + (0 if scoring == "keyword" else 0),
+        tokens_in=response.tokens_in,
         tokens_out=response.tokens_out,
         cost_usd=response.cost_usd,
         duration_ms=response.duration_ms,
@@ -203,6 +204,7 @@ def run_scenario(
 # ---------------------------------------------------------------------------
 # Parallel execution
 # ---------------------------------------------------------------------------
+
 
 def _run_scenario_sync(args: tuple) -> BenchmarkResult:
     """Wrapper for concurrent.futures — unpacks args tuple."""
@@ -236,14 +238,15 @@ def run_correction_persistence(
 
     if parallel <= 1:
         for scenario in scenarios:
-            result = run_scenario(scenario, driver, lens, skopus_dir, vault_dir, judge_driver, scoring)
+            result = run_scenario(
+                scenario, driver, lens, skopus_dir, vault_dir, judge_driver, scoring
+            )
             report.results.append(result)
     else:
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
         args_list = [
-            (s, driver, lens, skopus_dir, vault_dir, judge_driver, scoring)
-            for s in scenarios
+            (s, driver, lens, skopus_dir, vault_dir, judge_driver, scoring) for s in scenarios
         ]
         with ThreadPoolExecutor(max_workers=parallel) as pool:
             futures = {pool.submit(_run_scenario_sync, a): a[0].id for a in args_list}

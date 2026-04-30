@@ -20,6 +20,7 @@ Dataset source: desire2020/locomo-serialized on HuggingFace
 
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 from collections import Counter, defaultdict
@@ -124,17 +125,13 @@ class LoCoMoReport:
     def recall_any_5(self) -> float:
         if not self.retrieval_results:
             return 0.0
-        return sum(r.recall_any_5 for r in self.retrieval_results) / len(
-            self.retrieval_results
-        )
+        return sum(r.recall_any_5 for r in self.retrieval_results) / len(self.retrieval_results)
 
     @property
     def recall_any_10(self) -> float:
         if not self.retrieval_results:
             return 0.0
-        return sum(r.recall_any_10 for r in self.retrieval_results) / len(
-            self.retrieval_results
-        )
+        return sum(r.recall_any_10 for r in self.retrieval_results) / len(self.retrieval_results)
 
     @property
     def qa_accuracy(self) -> float:
@@ -243,10 +240,8 @@ def evaluate_retrieval_entry(
     col_name = _sanitize_collection_name(f"loco_{question.question_id}")
 
     # Clean up if exists from prior run
-    try:
+    with contextlib.suppress(Exception):
         client.delete_collection(col_name)
-    except Exception:
-        pass
 
     collection = client.create_collection(
         name=col_name,
@@ -294,10 +289,8 @@ def evaluate_retrieval_entry(
     ranked_ids = results["ids"][0] if results["ids"] else []
 
     # Cleanup
-    try:
+    with contextlib.suppress(Exception):
         client.delete_collection(col_name)
-    except Exception:
-        pass
 
     correct = set(question.evidence_session_ids)
 
@@ -351,10 +344,8 @@ def evaluate_qa_entry(
     client = chromadb.Client()
     col_name = _sanitize_collection_name(f"qa_{question.question_id}")
 
-    try:
+    with contextlib.suppress(Exception):
         client.delete_collection(col_name)
-    except Exception:
-        pass
 
     collection = client.create_collection(
         name=col_name,
@@ -392,10 +383,8 @@ def evaluate_qa_entry(
     retrieved_texts = results["documents"][0] if results["documents"] else []
 
     # Cleanup
-    try:
+    with contextlib.suppress(Exception):
         client.delete_collection(col_name)
-    except Exception:
-        pass
 
     # Build context with retrieved sessions
     context_block = "\n\n---\n\n".join(
@@ -538,12 +527,8 @@ def run_locomo(
     if not judge_driver:
         judge_driver = driver
 
-    def _run_and_judge(
-        question: LoCoMoQuestion, sessions: list[tuple[str, str]]
-    ) -> QAResult:
-        result = evaluate_qa_entry(
-            question, sessions, driver, lens, skopus_dir, vault_dir, top_k
-        )
+    def _run_and_judge(question: LoCoMoQuestion, sessions: list[tuple[str, str]]) -> QAResult:
+        result = evaluate_qa_entry(question, sessions, driver, lens, skopus_dir, vault_dir, top_k)
         return judge_qa_result(result, question.answer, question.question, judge_driver)
 
     if parallel <= 1:
@@ -552,8 +537,7 @@ def run_locomo(
     else:
         with ThreadPoolExecutor(max_workers=parallel) as pool:
             futures = {
-                pool.submit(_run_and_judge, q, sessions): q.question_id
-                for q, sessions in all_items
+                pool.submit(_run_and_judge, q, sessions): q.question_id for q, sessions in all_items
             }
             results_map_qa: dict[str, QAResult] = {}
             for future in as_completed(futures):
@@ -567,9 +551,7 @@ def run_locomo(
     return report
 
 
-def format_locomo_report(
-    report: LoCoMoReport, lens: LensConfig | None = None
-) -> str:
+def format_locomo_report(report: LoCoMoReport, lens: LensConfig | None = None) -> str:
     """Format results as markdown."""
     lines = [
         "# LoCoMo Results",
@@ -589,8 +571,7 @@ def format_locomo_report(
         )
         by_cat = report.retrieval_by_category()
         cat_counts = Counter(
-            CATEGORY_NAMES.get(r.category, f"cat-{r.category}")
-            for r in report.retrieval_results
+            CATEGORY_NAMES.get(r.category, f"cat-{r.category}") for r in report.retrieval_results
         )
         r10_by_cat: dict[str, list[float]] = defaultdict(list)
         for r in report.retrieval_results:
@@ -616,8 +597,7 @@ def format_locomo_report(
         )
         qa_by_cat = report.qa_accuracy_by_category()
         qa_cat_counts = Counter(
-            CATEGORY_NAMES.get(r.category, f"cat-{r.category}")
-            for r in report.qa_results
+            CATEGORY_NAMES.get(r.category, f"cat-{r.category}") for r in report.qa_results
         )
         for t in sorted(qa_by_cat.keys()):
             lines.append(f"| {t} | {qa_cat_counts[t]} | {qa_by_cat[t]:.1%} |")

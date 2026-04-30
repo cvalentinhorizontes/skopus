@@ -33,9 +33,7 @@ class CursorAdapter(Adapter):
         """Cursor stores per-project rules in .cursor/ and may have a binary."""
         if shutil.which("cursor"):
             return True
-        if (Path.home() / ".cursor").exists():
-            return True
-        return False
+        return bool((Path.home() / ".cursor").exists())
 
     def _rule_path(self, project_path: Path) -> Path:
         return project_path / CURSOR_RULE_PATH

@@ -23,6 +23,7 @@ init from the shell.
 
 from __future__ import annotations
 
+import contextlib
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -63,6 +64,7 @@ def _graphify_cmd() -> list[str]:
     if shutil.which("graphify") is not None:
         return ["graphify"]
     import sys
+
     return [sys.executable, "-m", "graphify"]
 
 
@@ -120,9 +122,7 @@ def _consolidate_graphify_block(project_path: Path) -> bool:
     dest_content = claude_dir_claude.read_text(encoding="utf-8")
     if GRAPHIFY_SECTION_MARKER not in dest_content:
         separator = "\n\n" if not dest_content.endswith("\n\n") else ""
-        claude_dir_claude.write_text(
-            dest_content + separator + graphify_block, encoding="utf-8"
-        )
+        claude_dir_claude.write_text(dest_content + separator + graphify_block, encoding="utf-8")
 
     # If root file had ONLY the graphify block, delete it; otherwise rewrite without it
     non_graphify = [line for line in lines if line not in block_lines]
@@ -264,7 +264,11 @@ def install_graphify_for_claude(
         scope_file.parent.mkdir(parents=True, exist_ok=True)
         scope_file.write_text("\n".join(scope) + "\n")
 
-    skill_msg = "" if skill_installed else " (skill file install failed — /graphify slash command may not work)"
+    skill_msg = (
+        ""
+        if skill_installed
+        else " (skill file install failed — /graphify slash command may not work)"
+    )
     return GraphifyInstallResult(
         installed=True,
         git_hook_installed=hook_installed,
@@ -289,7 +293,7 @@ def uninstall_graphify_for_claude(project_path: Path) -> GraphifyInstallResult:
         )
 
     for subcmd in [["claude", "uninstall"], ["hook", "uninstall"]]:
-        try:
+        with contextlib.suppress(subprocess.TimeoutExpired, FileNotFoundError):
             subprocess.run(
                 [*_graphify_cmd(), *subcmd],
                 cwd=project_path,
@@ -297,8 +301,6 @@ def uninstall_graphify_for_claude(project_path: Path) -> GraphifyInstallResult:
                 text=True,
                 timeout=30,
             )
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            pass
 
     return GraphifyInstallResult(
         installed=False,

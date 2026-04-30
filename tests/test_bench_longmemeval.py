@@ -6,7 +6,6 @@ from pathlib import Path
 import pytest
 
 from bench.config import LensConfig
-from bench.driver import MockDriver
 from bench.longmemeval.runner import (
     LMEEntry,
     LMEReport,
@@ -18,10 +17,10 @@ from bench.longmemeval.runner import (
     load_longmemeval,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 def _make_entry(
     question_id: str = "q-1",
@@ -69,6 +68,7 @@ def _make_entry(
 # load_longmemeval
 # ---------------------------------------------------------------------------
 
+
 class TestLoadLongmemeval:
     def test_loads_and_parses_entries(self, tmp_path: Path):
         data = [
@@ -81,9 +81,7 @@ class TestLoadLongmemeval:
                 "answer_session_ids": ["s1"],
                 "haystack_dates": ["2024-01-01"],
                 "haystack_session_ids": ["s1"],
-                "haystack_sessions": [
-                    [{"role": "user", "content": "My dog Buddy is great."}]
-                ],
+                "haystack_sessions": [[{"role": "user", "content": "My dog Buddy is great."}]],
             },
             {
                 "question_id": "q-2",
@@ -134,6 +132,7 @@ class TestLoadLongmemeval:
 # ---------------------------------------------------------------------------
 # _sessions_to_docs
 # ---------------------------------------------------------------------------
+
 
 class TestSessionsToDocs:
     def test_extracts_user_turns_only(self):
@@ -188,6 +187,7 @@ class TestSessionsToDocs:
 # evaluate_retrieval_entry
 # ---------------------------------------------------------------------------
 
+
 class TestEvaluateRetrievalEntry:
     def test_retrieves_correct_session(self):
         """With a small haystack, the answer session should appear in top-5."""
@@ -230,6 +230,7 @@ class TestEvaluateRetrievalEntry:
 # ---------------------------------------------------------------------------
 # format_longmemeval_report
 # ---------------------------------------------------------------------------
+
 
 class TestFormatLongmemevalReport:
     def test_empty_report_produces_header(self):
@@ -294,6 +295,7 @@ class TestFormatLongmemevalReport:
 # ---------------------------------------------------------------------------
 # LMEReport properties
 # ---------------------------------------------------------------------------
+
 
 class TestLMEReportProperties:
     def test_recall_any_5_average(self):

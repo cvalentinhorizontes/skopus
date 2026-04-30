@@ -1,7 +1,5 @@
 """Tests for skopus.adapters.claude_code."""
 
-from pathlib import Path
-
 from skopus.adapters import get_adapter
 from skopus.adapters.base import AdapterStatus
 from skopus.adapters.claude_code import (

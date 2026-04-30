@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import ClassVar
 
 from skopus.adapters.base import MarkdownAdapter
 from skopus.commands import load_command_templates, write_skill_md
@@ -21,8 +22,8 @@ class CodexAdapter(MarkdownAdapter):
     display_name = "Codex"
     context_file_name = "AGENTS.md"
     prefer_dotdir_name = None  # Codex uses root AGENTS.md
-    detect_config_dirs = ["~/.codex"]
-    detect_binaries = ["codex"]
+    detect_config_dirs: ClassVar[list[str]] = ["~/.codex"]
+    detect_binaries: ClassVar[list[str]] = ["codex"]
 
     def install_commands(self, skopus_dir: Path) -> list[Path]:
         codex_home = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")

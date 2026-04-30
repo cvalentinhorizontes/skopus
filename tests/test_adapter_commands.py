@@ -9,7 +9,6 @@ one file alongside the per-adapter installers.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from skopus.adapters import get_adapter
@@ -21,7 +20,6 @@ from skopus.commands import (
     render_gemini_toml,
     render_skill_md,
 )
-
 
 CANONICAL_COMMANDS = {
     "bench-contribute",
@@ -122,7 +120,7 @@ def test_gemini_install_commands_writes_toml(tmp_path, monkeypatch):
     for p in paths:
         assert p.parent == tmp_path / ".gemini" / "commands"
         text = p.read_text()
-        assert "prompt = \"\"\"" in text
+        assert 'prompt = """' in text
         assert text.rstrip().endswith('"""')
 
 
@@ -164,7 +162,7 @@ def test_link_invokes_install_commands(tmp_path, monkeypatch):
     commands_dir = tmp_path / ".claude" / "commands"
     assert commands_dir.is_dir(), "skopus link did not invoke claude-code install_commands"
     written = {p.stem for p in commands_dir.glob("*.md")}
-    assert CANONICAL_COMMANDS <= written
+    assert written >= CANONICAL_COMMANDS
 
 
 def test_install_commands_is_idempotent_across_runs(tmp_path, monkeypatch):
@@ -175,7 +173,7 @@ def test_install_commands_is_idempotent_across_runs(tmp_path, monkeypatch):
     snapshot = {p: p.read_text() for p in first}
 
     second = adapter.install_commands(skopus_dir=tmp_path / ".skopus")
-    assert {p for p in first} == {p for p in second}
+    assert set(first) == set(second)
     for p in second:
         assert p.read_text() == snapshot[p], f"{p.name} changed across runs"
 

@@ -19,7 +19,9 @@ Paper published numbers (QA accuracy with GPT-4o):
 
 from __future__ import annotations
 
+import contextlib
 import json
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -93,6 +95,7 @@ class LMEReport:
 
     def qa_accuracy_by_type(self) -> dict[str, float]:
         from collections import defaultdict
+
         by_type: dict[str, list[bool]] = defaultdict(list)
         for r in self.qa_results:
             by_type[r.question_type].append(r.correct)
@@ -100,6 +103,7 @@ class LMEReport:
 
     def retrieval_by_type(self) -> dict[str, float]:
         from collections import defaultdict
+
         by_type: dict[str, list[float]] = defaultdict(list)
         for r in self.retrieval_results:
             by_type[r.question_type].append(r.recall_any_5)
@@ -110,17 +114,19 @@ def load_longmemeval(path: Path) -> list[LMEEntry]:
     raw = json.loads(path.read_text(encoding="utf-8"))
     entries = []
     for d in raw:
-        entries.append(LMEEntry(
-            question_id=d["question_id"],
-            question_type=d["question_type"],
-            question=d["question"],
-            question_date=d.get("question_date", ""),
-            answer=d["answer"],
-            answer_session_ids=d["answer_session_ids"],
-            haystack_dates=d.get("haystack_dates", []),
-            haystack_session_ids=d["haystack_session_ids"],
-            haystack_sessions=d["haystack_sessions"],
-        ))
+        entries.append(
+            LMEEntry(
+                question_id=d["question_id"],
+                question_type=d["question_type"],
+                question=d["question"],
+                question_date=d.get("question_date", ""),
+                answer=d["answer"],
+                answer_session_ids=d["answer_session_ids"],
+                haystack_dates=d.get("haystack_dates", []),
+                haystack_session_ids=d["haystack_session_ids"],
+                haystack_sessions=d["haystack_sessions"],
+            )
+        )
     return entries
 
 
@@ -130,7 +136,7 @@ def _sessions_to_docs(entry: LMEEntry) -> list[tuple[str, str]]:
     Deduplicates by session ID (some entries have repeated IDs)."""
     seen: set[str] = set()
     docs = []
-    for sid, session in zip(entry.haystack_session_ids, entry.haystack_sessions):
+    for sid, session in zip(entry.haystack_session_ids, entry.haystack_sessions, strict=False):
         if sid in seen:
             continue
         seen.add(sid)
@@ -149,10 +155,8 @@ def evaluate_retrieval_entry(entry: LMEEntry) -> RetrievalResult:
     client = chromadb.Client()
     col_name = f"lme_{entry.question_id.replace(' ', '_')[:50]}"
     # Clean up if exists from prior run
-    try:
+    with contextlib.suppress(Exception):
         client.delete_collection(col_name)
-    except Exception:
-        pass
     collection = client.create_collection(
         name=col_name,
         metadata={"hnsw:space": "cosine"},
@@ -169,10 +173,8 @@ def evaluate_retrieval_entry(entry: LMEEntry) -> RetrievalResult:
     results = collection.query(query_texts=[entry.question], n_results=min(50, len(docs)))
     ranked_ids = results["ids"][0] if results["ids"] else []
     # Cleanup
-    try:
+    with contextlib.suppress(Exception):
         client.delete_collection(col_name)
-    except Exception:
-        pass
 
     correct = set(entry.answer_session_ids)
 
@@ -224,10 +226,8 @@ def evaluate_qa_entry(
     # Retrieve top-K sessions
     client = chromadb.Client()
     col_name = f"qa_{entry.question_id.replace(' ', '_')[:50]}"
-    try:
+    with contextlib.suppress(Exception):
         client.delete_collection(col_name)
-    except Exception:
-        pass
     collection = client.create_collection(
         name=col_name,
         metadata={"hnsw:space": "cosine"},
@@ -246,7 +246,7 @@ def evaluate_qa_entry(
 
     # Build context with retrieved sessions
     context_block = "\n\n---\n\n".join(
-        f"[Session {i+1}]\n{t}" for i, t in enumerate(retrieved_texts)
+        f"[Session {i + 1}]\n{t}" for i, t in enumerate(retrieved_texts)
     )
 
     # Build system prompt with Skopus lens
@@ -386,16 +386,17 @@ def format_longmemeval_report(report: LMEReport, lens: LensConfig | None = None)
     ]
 
     if report.retrieval_results:
-        lines.extend([
-            "## Retrieval (ChromaDB + all-MiniLM-L6-v2)",
-            "",
-            f"**R@5: {report.recall_any_5:.1%}** | R@10: {report.recall_any_10:.1%}",
-            "",
-            "| Question type | Count | R@5 | R@10 |",
-            "|---|---|---|---|",
-        ])
+        lines.extend(
+            [
+                "## Retrieval (ChromaDB + all-MiniLM-L6-v2)",
+                "",
+                f"**R@5: {report.recall_any_5:.1%}** | R@10: {report.recall_any_10:.1%}",
+                "",
+                "| Question type | Count | R@5 | R@10 |",
+                "|---|---|---|---|",
+            ]
+        )
         by_type = report.retrieval_by_type()
-        from collections import Counter
         type_counts = Counter(r.question_type for r in report.retrieval_results)
         for t in sorted(by_type.keys()):
             r10_by_type: dict[str, list[float]] = {}
@@ -407,17 +408,18 @@ def format_longmemeval_report(report: LMEReport, lens: LensConfig | None = None)
 
     if report.qa_results:
         lens_label = lens.display_name if lens else "unknown"
-        lines.extend([
-            f"## QA Accuracy (lens: {lens_label})",
-            "",
-            f"**Overall: {report.qa_accuracy:.1%}**",
-            "",
-            "| Question type | Count | Accuracy |",
-            "|---|---|---|",
-        ])
+        lines.extend(
+            [
+                f"## QA Accuracy (lens: {lens_label})",
+                "",
+                f"**Overall: {report.qa_accuracy:.1%}**",
+                "",
+                "| Question type | Count | Accuracy |",
+                "|---|---|---|",
+            ]
+        )
         qa_by_type = report.qa_accuracy_by_type()
-        from collections import Counter as C2
-        qa_type_counts = C2(r.question_type for r in report.qa_results)
+        qa_type_counts = Counter(r.question_type for r in report.qa_results)
         for t in sorted(qa_by_type.keys()):
             lines.append(f"| {t} | {qa_type_counts[t]} | {qa_by_type[t]:.1%} |")
         lines.append("")

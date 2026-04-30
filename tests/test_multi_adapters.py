@@ -4,8 +4,6 @@ Covers the shared MarkdownAdapter pattern across Codex, Aider, Gemini CLI,
 and Copilot CLI, plus the custom Cursor adapter.
 """
 
-from pathlib import Path
-
 import pytest
 
 from skopus.adapters import (
@@ -24,7 +22,6 @@ from skopus.adapters.base import (
     MarkdownAdapter,
     build_skopus_block,
 )
-
 
 # --- Registry tests ---
 

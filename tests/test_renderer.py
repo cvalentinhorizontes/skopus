@@ -131,7 +131,9 @@ def test_materialize_with_commit_creates_git_repo(tmp_path, monkeypatch):
     assert (skopus_dir / ".git").exists()
     log = subprocess.run(
         ["git", "log", "--oneline"],
-        cwd=skopus_dir, capture_output=True, text=True,
+        cwd=skopus_dir,
+        capture_output=True,
+        text=True,
     )
     assert log.returncode == 0
     assert log.stdout.strip()

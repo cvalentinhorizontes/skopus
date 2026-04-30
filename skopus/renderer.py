@@ -92,28 +92,40 @@ def _write(path: Path, content: str, *, force: bool = False) -> bool:
 def _git_init_and_commit(repo_dir: Path, message: str) -> None:
     """Initialize a git repo and commit. Best-effort, non-fatal."""
     identity_args = [
-        "-c", "user.email=skopus@localhost",
-        "-c", "user.name=Skopus",
-        "-c", "commit.gpgsign=false",
+        "-c",
+        "user.email=skopus@localhost",
+        "-c",
+        "user.name=Skopus",
+        "-c",
+        "commit.gpgsign=false",
     ]
     try:
         if not (repo_dir / ".git").exists():
             subprocess.run(
                 ["git", "init", "-q", "-b", "main"],
-                cwd=repo_dir, check=True, capture_output=True,
+                cwd=repo_dir,
+                check=True,
+                capture_output=True,
             )
         subprocess.run(
             ["git", "add", "-A"],
-            cwd=repo_dir, check=True, capture_output=True,
+            cwd=repo_dir,
+            check=True,
+            capture_output=True,
         )
         status = subprocess.run(
             ["git", "status", "--porcelain"],
-            cwd=repo_dir, check=True, capture_output=True, text=True,
+            cwd=repo_dir,
+            check=True,
+            capture_output=True,
+            text=True,
         )
         if status.stdout.strip():
             subprocess.run(
                 ["git", *identity_args, "commit", "-q", "-m", message],
-                cwd=repo_dir, check=True, capture_output=True,
+                cwd=repo_dir,
+                check=True,
+                capture_output=True,
             )
     except (subprocess.CalledProcessError, FileNotFoundError):
         pass

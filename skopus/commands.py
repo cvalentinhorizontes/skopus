@@ -72,11 +72,7 @@ def render_skill_md(template: CommandTemplate) -> str:
     description = template.description or f"Skopus /{template.name} command."
     description_block = _indent_yaml_block(description)
     return (
-        "---\n"
-        f"name: {template.name}\n"
-        f"description: {description_block}\n"
-        "---\n\n"
-        f"{template.body}"
+        f"---\nname: {template.name}\ndescription: {description_block}\n---\n\n{template.body}"
     ).rstrip() + "\n"
 
 
@@ -116,7 +112,9 @@ def _toml_multiline(value: str) -> str:
     return f'"""\n{safe.rstrip()}\n"""'
 
 
-def write_markdown_command(target_dir: Path, template: CommandTemplate, *, force: bool = True) -> Path:
+def write_markdown_command(
+    target_dir: Path, template: CommandTemplate, *, force: bool = True
+) -> Path:
     """Write a Markdown command file (Claude Code surface)."""
     target_dir.mkdir(parents=True, exist_ok=True)
     path = target_dir / f"{template.name}.md"
@@ -151,9 +149,4 @@ def _reassemble_markdown(template: CommandTemplate) -> str:
     """Rebuild a Claude Code command file (frontmatter + body) from a template."""
     if not template.description:
         return template.body
-    return (
-        "---\n"
-        f'description: {_indent_yaml_block(template.description)}\n'
-        "---\n\n"
-        f"{template.body}"
-    )
+    return f"---\ndescription: {_indent_yaml_block(template.description)}\n---\n\n{template.body}"
