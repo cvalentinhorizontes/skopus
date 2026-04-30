@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "skopus"
-version = "0.4.0"
+version = "0.5.0"
 description = "Persistent context for AI coding assistants. Install it, run it, your agent remembers you."
 readme = "README.md"
 license = { text = "MIT" }
