@@ -16,6 +16,7 @@ from skopus.adapters.base import (
     Adapter,
     AdapterInstallResult,
     AdapterStatus,
+    AdapterTier,
     build_skopus_block,
 )
 from skopus.commands import load_command_templates, write_markdown_command
@@ -71,6 +72,7 @@ class ClaudeCodeAdapter(Adapter):
 
     name = "claude-code"
     display_name = "Claude Code"
+    tier = AdapterTier.ADVERTISED
 
     def detect(self) -> bool:
         """Claude Code stores global state under ~/.claude/."""

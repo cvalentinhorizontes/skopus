@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import ClassVar
 
-from skopus.adapters.base import MarkdownAdapter
+from skopus.adapters.base import AdapterTier, MarkdownAdapter
 from skopus.commands import load_command_templates, write_gemini_toml
 
 
@@ -19,6 +19,7 @@ class GeminiCliAdapter(MarkdownAdapter):
 
     name = "gemini-cli"
     display_name = "Gemini CLI"
+    tier = AdapterTier.EXPERIMENTAL
     context_file_name = "GEMINI.md"
     prefer_dotdir_name = None
     detect_config_dirs: ClassVar[list[str]] = ["~/.gemini"]

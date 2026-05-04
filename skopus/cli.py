@@ -20,7 +20,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from skopus import __version__
-from skopus.adapters import ADAPTERS, get_adapter
+from skopus.adapters import ADAPTERS, AdapterTier, get_adapter
 from skopus.adapters.base import AdapterStatus
 from skopus.evolve import run_evolve
 from skopus.graphify_bridge import (
@@ -773,15 +773,81 @@ def charter_evolve(
         console.print("[yellow]⚠[/yellow] Nothing to commit (charter unchanged).")
 
 
+def _doctor_agent(name: str) -> None:
+    """Per-adapter introspection for `skopus doctor --agent <name>`."""
+    try:
+        adapter = get_adapter(name)
+    except KeyError:
+        console.print(f"[red]✗[/red] Unknown adapter: [bold]{name}[/bold]")
+        console.print(f"[dim]Known adapters: {', '.join(sorted(ADAPTERS))}[/dim]")
+        raise typer.Exit(code=1) from None
+
+    detected = adapter.detect()
+    project_status = adapter.status(project_path=Path.cwd())
+
+    table = Table(title=f"Adapter: {adapter.display_name} ({adapter.name})")
+    table.add_column("Property", style="bold")
+    table.add_column("Value")
+    table.add_column("Evidence", style="dim")
+
+    tier_color = {
+        AdapterTier.ADVERTISED: "green",
+        AdapterTier.EXPERIMENTAL: "yellow",
+        AdapterTier.UNVERIFIED: "red",
+    }[adapter.tier]
+    table.add_row(
+        "Tier",
+        f"[{tier_color}]{adapter.tier.value}[/{tier_color}]",
+        "smoke-tested file-side contract"
+        if adapter.tier is AdapterTier.ADVERTISED
+        else "no smoke-test guarantee",
+    )
+    table.add_row(
+        "Platform detected",
+        "[green]yes[/green]" if detected else "[yellow]no[/yellow]",
+        f"detect() = {detected}",
+    )
+    table.add_row(
+        "Project status",
+        f"[cyan]{project_status.value}[/cyan]",
+        f"checked at {Path.cwd()}",
+    )
+    console.print(table)
+
+    if adapter.tier is not AdapterTier.ADVERTISED:
+        console.print(
+            "[yellow]⚠[/yellow] This adapter is not on the v0.7.0 advertised list. "
+            "Marketing claims of support require a smoke test passing."
+        )
+
+
 @app.command()
-def doctor() -> None:
-    """Health check the Skopus installation — charter, memory, vault, linked projects."""
+def doctor(
+    agent: str | None = typer.Option(
+        None,
+        "--agent",
+        help=(
+            "If set, report integration state for one specific adapter "
+            "(e.g. claude-code, cursor, agents-md)."
+        ),
+    ),
+) -> None:
+    """Health check the Skopus installation — charter, memory, vault, linked projects.
+
+    With --agent <name>, report the per-adapter integration state with evidence:
+    tier (advertised / experimental / unverified), detect() result, and project
+    install status when run inside a project directory.
+    """
     skopus_dir = resolve_skopus_path()
     if not skopus_dir.exists():
         console.print(
             "[red]✗[/red] Skopus is not initialized. Run [italic]skopus init[/italic] first."
         )
         raise typer.Exit(code=1)
+
+    if agent is not None:
+        _doctor_agent(agent)
+        return
 
     table = Table(title="Skopus Health Check", show_lines=False)
     table.add_column("Component", style="bold")

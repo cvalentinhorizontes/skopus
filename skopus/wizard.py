@@ -35,11 +35,11 @@ COMM_STYLE_CHOICES = ["terse", "detailed", "mix"]
 AGENT_CHOICES = [
     "Claude Code",
     "Cursor",
+    "AGENTS.md",
     "Codex",
     "Aider",
     "Gemini CLI",
     "Copilot CLI",
-    "OpenCode",
 ]
 
 SEED_PROFILE_CHOICES = [

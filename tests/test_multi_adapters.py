@@ -27,9 +27,10 @@ from skopus.adapters.base import (
 
 
 def test_registry_has_all_expected_adapters():
-    """v0.0.3 registry must include all 6 adapters + aliases."""
+    """v0.7.0 registry: 6 platform adapters + AGENTS.md universal fallback + aliases."""
     assert "claude-code" in ADAPTERS
     assert "cursor" in ADAPTERS
+    assert "agents-md" in ADAPTERS  # universal fallback (v0.7.0)
     assert "codex" in ADAPTERS
     assert "aider" in ADAPTERS
     assert "gemini-cli" in ADAPTERS
@@ -42,6 +43,13 @@ def test_registry_aliases_resolve():
     assert isinstance(gemini, GeminiCliAdapter)
     copilot = get_adapter("copilot")
     assert isinstance(copilot, CopilotCliAdapter)
+
+
+def test_agents_alias_resolves():
+    """v0.7.0: 'agents' is the natural shorthand for 'agents-md'."""
+    from skopus.adapters import AgentsMdAdapter, get_adapter
+
+    assert isinstance(get_adapter("agents"), AgentsMdAdapter)
 
 
 def test_get_adapter_normalizes_spaces():

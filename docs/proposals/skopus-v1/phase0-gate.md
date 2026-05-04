@@ -18,7 +18,7 @@
 | Slim block ≈tokens | ≤ 600 (test cap) | ~266 | ✓ |
 | Idempotent render | byte-equal across same-day re-renders | proved by `test_slim_block_render_is_deterministic_within_one_day` | ✓ |
 | Mock CP harness wires end-to-end | runs all 5 lens configs without error | confirmed | ✓ |
-| Real-API CP score (thin block) | ≥ 95% of pre-slim baseline | **deferred — not measurable on mock driver** | ⚠ deferred |
+| Real-API CP score (thin block) | ≥ 95% of pre-slim baseline | **deferred — script ships in Phase 1** (`bench/scripts/measure_phase0_cp_gate.py`); awaits Carlos's manual invocation when API budget is approved | ⚠ deferred |
 
 ---
 
@@ -59,13 +59,40 @@ The v2 evidence-locked gate requires "thin block ≥ 95% of pre-slim baseline" o
 - ~$10-20 per 120-scenario sweep (rough estimate; actual cost depends on per-scenario token usage)
 - A pre-slim baseline run on the same scenarios — which we *do not have* recorded in `bench/results/`
 
-**Decision:** real-API measurement is deferred to **Phase 1 release-cut CI**. Specifically:
+**Status as of Phase 1 (2026-05-04):** The measurement script ships in this branch
+at `bench/scripts/measure_phase0_cp_gate.py`. The script:
 
-1. Phase 1 plan adds a one-time pre-slim baseline run by checking out `77c2d94^` (the commit just before slim shipped), running `--driver anthropic --ablation`, and persisting the result as `skopus-bench-pre-slim-baseline-YYYYMMDD.json`.
-2. Same plan adds a thin-block run from current `HEAD`, persisted as `skopus-bench-thin-block-YYYYMMDD.json`.
-3. Compare and assert `thin_block_full_skopus_accuracy >= 0.95 * pre_slim_full_skopus_accuracy`.
+1. Uses `git worktree add 77c2d94^` to check out the pre-slim ref into a temp directory.
+2. Runs `python3 -m skopus bench run cp --driver anthropic --lens full` against the worktree
+   (with `PYTHONPATH=<worktree>` so the worktree's pre-slim slim-block code is the one
+   actually executing).
+3. Copies the pre-slim result file into `bench/results/pre-slim-<original-name>.json`
+   so the result survives the worktree cleanup.
+4. Runs the same against current HEAD.
+5. Parses both result JSONs, computes `thin_block_full_skopus_accuracy / pre_slim_full_skopus_accuracy`,
+   compares against the 0.95 threshold, and writes a JSON report at
+   `docs/proposals/skopus-v1/phase0-real-api-gate.json`.
+6. Exits 0 on pass, 1 on fail.
 
-Without step 1 we cannot honestly evaluate the v2 gate. The mock baseline above proves the harness is *capable* of measuring it; the real measurement waits for Carlos's authorization to spend API credits.
+**Run procedure** (when API budget is approved):
+
+```bash
+# Cost estimate first — ~$0.20 across both refs at 5 scenarios each
+python3 -m bench.scripts.measure_phase0_cp_gate --limit 5
+
+# Full measurement — ~$5-15 across both refs at 120 scenarios each
+python3 -m bench.scripts.measure_phase0_cp_gate
+```
+
+The script REQUIRES `ANTHROPIC_API_KEY` in the environment and exits 1 with
+a clear error if the key is missing.
+
+**As of Phase 1 close (2026-05-04):** the run itself has not been executed —
+`ANTHROPIC_API_KEY` was not present in the active shell during the Phase 1
+implementation session. The Phase 0 deferred row remains deferred, but the
+deferral now points at an executable script rather than "TBD." When Carlos
+runs it, this row gets updated with the actual ratio and verdict, and a row
+is added to the Phase 1 manual-smoke results table.
 
 ---
 

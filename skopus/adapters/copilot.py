@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from skopus.adapters.base import MarkdownAdapter
+from skopus.adapters.base import AdapterTier, MarkdownAdapter
 
 
 class CopilotCliAdapter(MarkdownAdapter):
@@ -17,6 +17,7 @@ class CopilotCliAdapter(MarkdownAdapter):
 
     name = "copilot-cli"
     display_name = "GitHub Copilot CLI"
+    tier = AdapterTier.EXPERIMENTAL
     context_file_name = "AGENTS.md"
     prefer_dotdir_name = None
     detect_config_dirs: ClassVar[list[str]] = ["~/.copilot", "~/.config/gh/copilot"]

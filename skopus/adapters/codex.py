@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import ClassVar
 
-from skopus.adapters.base import MarkdownAdapter
+from skopus.adapters.base import AdapterTier, MarkdownAdapter
 from skopus.commands import load_command_templates, write_skill_md
 
 
@@ -20,6 +20,7 @@ class CodexAdapter(MarkdownAdapter):
 
     name = "codex"
     display_name = "Codex"
+    tier = AdapterTier.EXPERIMENTAL
     context_file_name = "AGENTS.md"
     prefer_dotdir_name = None  # Codex uses root AGENTS.md
     detect_config_dirs: ClassVar[list[str]] = ["~/.codex"]
