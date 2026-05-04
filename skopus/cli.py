@@ -432,6 +432,31 @@ def init(
         console.print("[bold cyan]Next:[/bold cyan] [italic]cd my-project && skopus link[/italic]")
 
 
+def _link_mcp(name: str) -> None:
+    """Dispatch `skopus link --mcp <name>` to the right MCP installer."""
+    from skopus.mcp.installers.claude_code import install_claude_code_mcp
+    from skopus.mcp.installers.cline import install_cline_mcp
+    from skopus.mcp.installers.cursor import install_cursor_mcp
+
+    installers = {
+        "claude-code": install_claude_code_mcp,
+        "cline": install_cline_mcp,
+        "cursor": install_cursor_mcp,
+    }
+
+    if name not in installers:
+        console.print(f"[red]✗[/red] Unknown MCP installer: [bold]{name}[/bold]")
+        console.print(f"[dim]Known: {', '.join(sorted(installers))}[/dim]")
+        raise typer.Exit(code=1)
+
+    result = installers[name]()
+    if result.get("written"):
+        console.print(
+            f"[green]✓[/green] Wired Skopus MCP into [bold]{name}[/bold] at "
+            f"[cyan]{result['config_path']}[/cyan] ({result['action']})"
+        )
+
+
 @app.command()
 def link(
     project_path: Path = typer.Argument(
@@ -447,12 +472,40 @@ def link(
         "-a",
         help="Which adapter to use. Default: claude-code.",
     ),
+    mcp: str | None = typer.Option(
+        None,
+        "--mcp",
+        help="Wire `skopus mcp serve` into the named agent's MCP config "
+        "(claude-code, cline, cursor). Skips the legacy adapter wiring.",
+    ),
 ) -> None:
-    """Wire Skopus into a project's CLAUDE.md."""
+    """Wire Skopus into a project's CLAUDE.md.
+
+    With --mcp <agent>, instead wires the Skopus stdio MCP server into the
+    agent's MCP config (e.g. ~/.claude/settings.json) so the agent can
+    discover Skopus tools. Skips the legacy adapter file wiring.
+    """
     skopus_dir = resolve_skopus_path()
     if not skopus_dir.exists():
         console.print("[red]✗[/red] Run [italic]skopus init[/italic] first.")
         raise typer.Exit(code=1)
+
+    # Mutual exclusivity: --mcp owns the install path; --agent is for the legacy path.
+    # Detect when the user explicitly passed --agent alongside --mcp by comparing
+    # against the typer default. Not perfect (a user explicitly typing
+    # `--agent claude-code` is indistinguishable from default), but catches the
+    # common footgun: --mcp cline --agent cursor.
+    if mcp is not None and agent != "claude-code":
+        console.print(
+            "[red]✗[/red] --mcp and --agent are mutually exclusive. "
+            f"You passed --mcp={mcp} and --agent={agent}. "
+            "Use --mcp alone for MCP install, or drop --mcp to use the adapter."
+        )
+        raise typer.Exit(code=1)
+
+    if mcp is not None:
+        _link_mcp(mcp)
+        return
 
     vault_dir = skopus_dir / "vault"
     resolved_project = project_path.resolve()
@@ -793,6 +846,34 @@ def charter_evolve(
         console.print("[yellow]⚠[/yellow] Nothing to commit (charter unchanged).")
 
 
+def _check_mcp_status(adapter_name: str, home: Path) -> str:
+    """Return human-readable MCP install status for the given adapter.
+
+    Returns one of: 'installed', 'not_installed', 'config-unparseable',
+    'n/a (no MCP installer)'.
+    """
+    if adapter_name == "claude-code":
+        cfg_path = home / ".claude" / "settings.json"
+    elif adapter_name == "cline":
+        cfg_path = home / ".config" / "cline" / "cline_mcp_settings.json"
+    elif adapter_name == "cursor":
+        cfg_path = home / ".cursor" / "mcp.json"
+    else:
+        return "n/a (no MCP installer)"
+
+    if not cfg_path.is_file():
+        return "not_installed"
+    try:
+        cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return "config-unparseable"
+    if not isinstance(cfg, dict):
+        return "config-unparseable"
+    if "skopus" in cfg.get("mcpServers", {}):
+        return "installed"
+    return "not_installed"
+
+
 def _doctor_agent(name: str) -> None:
     """Per-adapter introspection for `skopus doctor --agent <name>`."""
     try:
@@ -831,6 +912,20 @@ def _doctor_agent(name: str) -> None:
         "Project status",
         f"[cyan]{project_status.value}[/cyan]",
         f"checked at {Path.cwd()}",
+    )
+    mcp_status = _check_mcp_status(adapter.name, Path.home())
+    if mcp_status == "installed":
+        mcp_color = "green"
+    elif mcp_status == "not_installed":
+        mcp_color = "yellow"
+    elif mcp_status.startswith("n/a"):
+        mcp_color = "dim"
+    else:
+        mcp_color = "red"
+    table.add_row(
+        "MCP installed",
+        f"[{mcp_color}]{mcp_status}[/{mcp_color}]",
+        f"checked {adapter.name}'s MCP config",
     )
     console.print(table)
 
