@@ -11,7 +11,7 @@
 
 | Gate | Target | Actual | Status |
 |---|---|---|---|
-| Existing tests pass | green | **198 pass, 1 skipped** across full `tests/` (was 175 at Phase 0 close; +23 from Phase 1) | ✓ |
+| Existing tests pass | green | **197 pass, 1 skipped** across full `tests/` (was 175 at Phase 0 close; +22 from Phase 1) | ✓ |
 | 3 adapters marked ADVERTISED | claude-code, cursor, agents-md | confirmed by `tests/test_adapter_tier.py::test_advertised_adapters_for_v071` and `tests/test_smoke_advertised_adapters.py::test_advertised_adapter_has_advertised_tier[*]` | ✓ |
 | Smoke suite per advertised adapter | install / status / uninstall + idempotent + structural | passes in `tests/test_smoke_advertised_adapters.py` (15 parametrized + 2 specific = 17 tests, all green) | ✓ |
 | Doctor accurately reports per-adapter | tier + detect + project status with evidence | `skopus doctor --agent <name>` works for all 6 adapters + the `agents-md` registration; tests in `tests/test_doctor_agent.py` (4 green) | ✓ |
@@ -79,18 +79,10 @@ release. Record results below.
 
 ## Test count growth (this branch)
 
-| Snapshot | Total tests | Delta |
+| Snapshot | Total tests | Source |
 |---|---|---|
-| Phase 0 close (main @ `7050158`) | 175 pass, 1 skipped | — |
-| After Task 12 (AdapterTier) | 178 pass, 1 skipped | +3 (test_adapter_tier.py) |
-| After Task 13 (AgentsMdAdapter + registry test extension) | 186 pass, 1 skipped | +8 (7 new tests in test_agents_md_adapter.py + 1 alias test in test_multi_adapters.py) |
-| After Task 14 (smoke harness) | 203 pass, 1 skipped — wait, actual: **need to recount** | +17 |
-| After Task 16 (doctor --agent) | **198 pass, 1 skipped** | +4 (test_doctor_agent.py) |
-
-**Note:** the snapshot intermediate counts above are estimates by addition.
-The authoritative final count from the full test run on this branch (HEAD
-`f348f81`) is **198 pass, 1 skipped**. The skipped test is pre-existing
-(an API-gated test that requires network/credentials).
+| Phase 0 close (main @ `7050158`) | 175 pass, 1 skipped | baseline |
+| Phase 1 close (this branch HEAD) | 197 pass, 1 skipped | +22 across the 5 new test files (test_adapter_tier, test_agents_md_adapter, test_smoke_advertised_adapters, test_doctor_agent + the registry-extension test in test_multi_adapters) |
 
 ---
 

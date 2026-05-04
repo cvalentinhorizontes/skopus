@@ -21,6 +21,7 @@ ADAPTERS: dict[str, type[Adapter]] = {
     "copilot-cli": CopilotCliAdapter,
     # Aliases for the common name used in the wizard
     "agents": AgentsMdAdapter,
+    "agents.md": AgentsMdAdapter,  # wizard label normalizes to this
     "gemini": GeminiCliAdapter,
     "copilot": CopilotCliAdapter,
 }

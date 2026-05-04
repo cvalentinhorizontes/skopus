@@ -23,7 +23,7 @@ git add . && git commit -q -m "init"
 # Fresh skopus install (use a throwaway HOME to avoid contaminating
 # your real ~/.skopus). Replace /tmp/skopus-home with any empty dir.
 mkdir -p /tmp/skopus-home
-HOME=/tmp/skopus-home pip install -e /home/dev-carlos/skopus
+HOME=/tmp/skopus-home pipx install skopus
 HOME=/tmp/skopus-home skopus init --name SmokeTester --role founder
 HOME=/tmp/skopus-home skopus link  # in /tmp/skopus-smoke
 ```
