@@ -430,6 +430,11 @@ def init(
         )
     elif not wired_any:
         console.print("[bold cyan]Next:[/bold cyan] [italic]cd my-project && skopus link[/italic]")
+    console.print(
+        "[dim]Tip: wire the MCP server into your agent with "
+        "[italic]skopus link --mcp claude-code[/italic] (or cline / cursor) "
+        "so Skopus tools are queryable on demand.[/dim]"
+    )
 
 
 def _link_mcp(name: str) -> None:
