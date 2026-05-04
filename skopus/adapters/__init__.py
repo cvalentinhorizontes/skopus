@@ -1,7 +1,8 @@
 """Platform adapters — one file per AI coding assistant."""
 
+from skopus.adapters.agents_md import AgentsMdAdapter
 from skopus.adapters.aider import AiderAdapter
-from skopus.adapters.base import Adapter, AdapterStatus
+from skopus.adapters.base import Adapter, AdapterStatus, AdapterTier
 from skopus.adapters.claude_code import ClaudeCodeAdapter
 from skopus.adapters.codex import CodexAdapter
 from skopus.adapters.copilot import CopilotCliAdapter
@@ -13,11 +14,13 @@ from skopus.adapters.gemini import GeminiCliAdapter
 ADAPTERS: dict[str, type[Adapter]] = {
     "claude-code": ClaudeCodeAdapter,
     "cursor": CursorAdapter,
+    "agents-md": AgentsMdAdapter,  # universal fallback
     "codex": CodexAdapter,
     "aider": AiderAdapter,
     "gemini-cli": GeminiCliAdapter,
     "copilot-cli": CopilotCliAdapter,
     # Aliases for the common name used in the wizard
+    "agents": AgentsMdAdapter,
     "gemini": GeminiCliAdapter,
     "copilot": CopilotCliAdapter,
 }
@@ -35,6 +38,8 @@ __all__ = [
     "ADAPTERS",
     "Adapter",
     "AdapterStatus",
+    "AdapterTier",
+    "AgentsMdAdapter",
     "AiderAdapter",
     "ClaudeCodeAdapter",
     "CodexAdapter",

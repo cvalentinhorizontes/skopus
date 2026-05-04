@@ -29,6 +29,25 @@ class AdapterStatus(str, Enum):
     BROKEN = "broken"  # wiring corrupt, needs reinstall
 
 
+class AdapterTier(str, Enum):
+    """Honesty surface for which adapters Skopus advertises as smoke-tested.
+
+    ADVERTISED: file-side contract is verified by smoke tests under `tests/`.
+    The agent platform is documented as supported; doctor reports
+    installed/partial/broken with evidence.
+
+    EXPERIMENTAL: install/uninstall/status work, but no smoke test asserts
+    the file-side contract. Doctor reports best-effort status only.
+
+    UNVERIFIED: default for new adapters until they earn ADVERTISED. Marketing
+    copy MUST NOT claim support.
+    """
+
+    ADVERTISED = "advertised"
+    EXPERIMENTAL = "experimental"
+    UNVERIFIED = "unverified"
+
+
 @dataclass
 class AdapterInstallResult:
     """Result of calling `install()` on an adapter."""
@@ -44,6 +63,7 @@ class Adapter(ABC):
 
     name: str = "abstract"
     display_name: str = "Abstract Adapter"
+    tier: AdapterTier = AdapterTier.UNVERIFIED  # opt-in to ADVERTISED via subclass
 
     @abstractmethod
     def detect(self) -> bool:
