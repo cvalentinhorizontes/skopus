@@ -43,6 +43,9 @@ dependencies = [
     "jinja2>=3.1",
     "questionary>=2.0",
     "pyyaml>=6.0",
+    # MCP SDK (Phase 2) — Skopus exposes 5 tools via stdio MCP server.
+    # FastMCP API is in mcp.server.fastmcp; stdio transport in mcp.server.stdio.
+    "mcp>=1.0",
     # Fourth lens — structural codebase knowledge graph (full install)
     # Includes: tree-sitter grammars (20 languages), Leiden community detection,
     # MCP server for graph queries, PDF extraction, file-watcher for auto-rebuild.

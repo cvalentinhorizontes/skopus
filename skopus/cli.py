@@ -623,6 +623,26 @@ bench_app = typer.Typer(
 )
 app.add_typer(bench_app, name="bench")
 
+mcp_app = typer.Typer(
+    name="mcp",
+    help="MCP server commands — expose Skopus context to MCP-capable agents.",
+    no_args_is_help=True,
+)
+app.add_typer(mcp_app, name="mcp")
+
+
+@mcp_app.command("serve")
+def mcp_serve() -> None:
+    """Run the Skopus MCP server over stdio.
+
+    Intended to be invoked by an agent's MCP runtime, not interactively.
+    The server speaks the Model Context Protocol over stdin/stdout.
+    """
+    from skopus.mcp import build_server
+
+    server = build_server()
+    server.run(transport="stdio")
+
 
 @bench_app.command("list")
 def bench_list() -> None:
