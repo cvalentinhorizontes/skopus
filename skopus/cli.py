@@ -21,7 +21,11 @@ from rich.table import Table
 
 from skopus import __version__
 from skopus.adapters import ADAPTERS, AdapterTier, get_adapter
-from skopus.adapters.base import AdapterStatus
+from skopus.adapters.base import (
+    SKOPUS_SECTION_END,
+    SKOPUS_SECTION_START,
+    AdapterStatus,
+)
 from skopus.evolve import run_evolve
 from skopus.graphify_bridge import (
     first_build_hint,
@@ -303,6 +307,41 @@ def update() -> None:
     )
 
 
+def _detect_conflicting_skopus_wiring(project: Path, target_skopus_dir: Path) -> Path | None:
+    """Return the existing Skopus context file in `project` if it points at a
+    skopus_dir DIFFERENT from `target_skopus_dir`, else None.
+
+    Checks the canonical context-file locations the ADVERTISED adapters write
+    to. A conflict means the user is about to silently re-wire a project
+    that's currently linked elsewhere — exactly the cross-contamination bug
+    surfaced by the Phase 2 manual smoke run.
+    """
+    candidates = [
+        project / ".claude" / "CLAUDE.md",
+        project / "CLAUDE.md",
+        project / "AGENTS.md",
+        project / ".cursor" / "rules" / "skopus.mdc",
+    ]
+    target_str = str(target_skopus_dir.resolve())
+    for candidate in candidates:
+        if not candidate.is_file():
+            continue
+        text = candidate.read_text(encoding="utf-8")
+        if SKOPUS_SECTION_START not in text or SKOPUS_SECTION_END not in text:
+            continue
+        # Extract the Skopus block and look for any path inside that points at
+        # a different skopus_dir. We compare against the resolved target path
+        # so symlinks and trailing-slash variations don't false-positive.
+        start = text.index(SKOPUS_SECTION_START)
+        end = text.index(SKOPUS_SECTION_END) + len(SKOPUS_SECTION_END)
+        block = text[start:end]
+        if target_str in block:
+            # Already pointing at the same target — idempotent re-wire is fine.
+            continue
+        return candidate
+    return None
+
+
 @app.command()
 def init(
     non_interactive: bool = typer.Option(
@@ -326,6 +365,11 @@ def init(
         "--force",
         "-f",
         help="Overwrite existing files. Default is non-destructive merge.",
+    ),
+    no_autolink: bool = typer.Option(
+        False,
+        "--no-autolink",
+        help="Skip the cwd auto-link step. Global ~/.skopus/ scaffold still runs.",
     ),
 ) -> None:
     """Initialize Skopus — one command, everything set up."""
@@ -369,8 +413,38 @@ def init(
     # --- Step 3: Auto-link current project if inside a git repo ---
     cwd = Path.cwd()
     wired_any = False
-    if (cwd / ".git").exists():
-        console.print(f"\n[bold]Linking current project:[/bold] {cwd.name}")
+    autolink_ok = True
+    if no_autolink:
+        console.print(
+            "\n[dim]Skipping cwd auto-link (--no-autolink). "
+            "Run [italic]skopus link[/italic] inside a project to wire it.[/dim]"
+        )
+        autolink_ok = False
+    elif (cwd / ".git").exists():
+        # Conflict check: refuse to re-wire a project already linked elsewhere
+        # unless --force. Prevents the cross-contamination bug where running
+        # `HOME=/tmp/throwaway skopus init` from a real project's dir
+        # silently rewrites that project's CLAUDE.md to point at the
+        # throwaway HOME's skopus_dir.
+        conflict_path = _detect_conflicting_skopus_wiring(cwd, skopus_dir)
+        if conflict_path is not None and not force:
+            console.print(
+                f"\n[red]✗[/red] [bold]{cwd.name}[/bold] is already linked to a "
+                f"different ~/.skopus/."
+            )
+            console.print(f"  Existing wiring: [cyan]{conflict_path}[/cyan]")
+            console.print(
+                "  Refusing to overwrite to avoid cross-contamination. "
+                "Re-run with [italic]--force[/italic] to override, or "
+                "[italic]--no-autolink[/italic] to skip the cwd wiring entirely."
+            )
+            autolink_ok = False
+        else:
+            console.print(f"\n[bold]Linking current project:[/bold] {cwd.name}")
+    else:
+        autolink_ok = False  # no .git in cwd — fall through to "Not inside a git repo" hint
+
+    if autolink_ok:
         for agent_name in result.agents:
             key = agent_name.lower().replace(" ", "-")
             if key not in ADAPTERS:
@@ -410,7 +484,10 @@ def init(
                 )
                 if graphify_result.installed:
                     console.print(f"  [green]✓[/green] {graphify_result.message}")
-    else:
+    elif not no_autolink and not (cwd / ".git").exists():
+        # Only show the "not inside a git repo" hint when that's actually the
+        # reason — not when the user explicitly opted out via --no-autolink
+        # or when we refused due to a conflict (those have their own messages).
         console.print(
             "\n[dim]Not inside a git repo — run [italic]skopus link[/italic] "
             "inside a project to wire it.[/dim]"
