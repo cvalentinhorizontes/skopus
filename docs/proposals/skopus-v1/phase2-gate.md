@@ -88,7 +88,7 @@ release. Record results below.
 |---|---|---|
 | Claude Code `status()` reports `not_installed` after `install_commands`/guard creates `.claude/` | `a70c497` | Adapter `status()` now checks both project-root and `.claude/` candidate paths. Regression test added. |
 | `__version__` stuck at 0.5.1 despite v0.8.0 pyproject bump → MCP tool, CLI, adapters.lock all reported stale version | `cab9c8c` | Bumped `__version__` to 0.8.0 + added `tests/test_version_sync.py` that fails CI on future drift. |
-| `skopus init` silently re-wires `cwd` project, cross-contaminating real projects when init runs from outside the intended dir | (open) | UX trap. Init should either prompt for the link target or require an explicit flag. Tracked for next foundation pass. |
+| `skopus init` silently re-wires `cwd` project, cross-contaminating real projects when init runs from outside the intended dir | `f42e6cc` | Init now refuses to overwrite a project whose existing Skopus block points at a different `skopus_dir` (unless `--force`). New `--no-autolink` flag opts out of cwd auto-link entirely. 4 regression tests in `tests/test_init_no_contamination.py`. Live-replayed the original bug scenario after the fix — real project's CLAUDE.md unchanged. |
 
 ---
 
