@@ -59,9 +59,21 @@ release. Record results below.
 
 | Date | Adapter | Result | Notes |
 |---|---|---|---|
-| 2026-05-05 | claude-code | ✓ headless wiring | `skopus link` writes `<project>/CLAUDE.md` with valid Skopus block; `skopus doctor --agent claude-code` reports installed (after `a70c497` cascade fix). The current dev Claude Code session (this branch's authoring session) ran for hours grounded in the wired `/home/dev-carlos/skopus/.claude/CLAUDE.md` → `/home/dev-carlos/.skopus/charter/...` chain — implicit live PASS for the production install. Dedicated isolated-HOME live probe still useful but lower priority. |
-| 2026-05-05 | cursor | ✓ headless wiring | `skopus link --agent cursor` writes `<project>/.cursor/rules/skopus.mdc` with `alwaysApply: true` frontmatter; doctor reports installed. Cursor UI side-load probe needs human session. |
-| 2026-05-05 | agents-md | ✓ live PASS via Codex CLI | Carlos invoked Codex against the production install with the probe prompt "What does the partnership charter say about non-negotiables?" Codex (a) loaded the AGENTS.md Skopus context block, (b) FIRST tried the Skopus-installed `query` slash command (validates `install_commands` slash-command surface end-to-end — never headless-tested before), (c) when wiki was empty fell back to reading the charter files at the paths the block pointed to, (d) returned all 6 non-negotiables with `file:line` citations to `workflow_partnership.md:36` + `CLAUDE.md:16`. End-to-end wiring contract proven. |
+| 2026-05-05 | claude-code | ✓ **PROVEN** | Probe-token method (see "Clean probe procedure" below). CC against `/tmp/skopus-smoke/` returned: `"The user's name as recorded in the partnership charter is PROBE-1777999019-XYZZY (founder, primary stack: Python/TypeScript, time zone: America/Puerto_Rico)."` Token only existed in the live charter — repo grep clean. Plus extra wizard-seeded fields not asked for, indicating CC read the full user_profile.md. |
+| 2026-05-05 | cursor | ✓ **PROVEN** | Same probe. Cursor against `/tmp/skopus-smoke/` returned: `"In the partnership charter (/tmp/skopus-mcp-home/.skopus/charter/workflow_partnership.md), the human side of the partnership is recorded as PROBE-1777999019-XYZZY (founder role)."` Cited the exact wired charter path AND noted the cross-reference to user_profile.md. Plus meta-cognition: noted the token "reads like a seeded probe ID from skopus init, not a display name such as Carlos." |
+| 2026-05-05 | agents-md (via Codex CLI) | ✓ **PROVEN** | Same probe. Codex against `/tmp/skopus-smoke/` returned: `"The partnership charter records the user's name as PROBE-1777999019-XYZZY. Reference: /tmp/skopus-mcp-home/.skopus/charter/workflow_partnership.md:10"` — exact file:line citation. |
+
+### Clean probe procedure (post-2026-05-05 v1)
+
+Earlier "PASS" entries (since reverted) ran probes against the Skopus dev repo itself and asked for content the agent could grep without any wiring (e.g. "non-negotiables"). Those proved nothing — see `feedback_evidence_ambiguity_in_repo_probes.md`. The clean probe:
+
+1. **Bootstrap an isolated smoke project** at `/tmp/skopus-smoke/` (git-init only, one README, no Skopus source code).
+2. **Generate a unique token** — e.g. `PROBE-$(date +%s)-XYZZY`. Verify it's nowhere in the repo (`grep -rln "$TOKEN" /home/dev-carlos/skopus/`).
+3. **Run `skopus init --name "$TOKEN"`** with isolated HOME so the token lands in the rendered charter (and only there).
+4. **Wire all 3 ADVERTISED adapters** to the smoke project.
+5. **Open each agent against `/tmp/skopus-smoke/`** (not the dev repo).
+6. **Probe**: "Read this project's Skopus context and tell me the user's name as recorded in the partnership charter."
+7. **PASS** = agent returns the literal token. Only the wiring → rendered charter chain could have placed it there.
 
 ---
 
