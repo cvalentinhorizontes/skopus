@@ -18,7 +18,7 @@
 | Slim block ≈tokens | ≤ 600 (test cap) | ~266 | ✓ |
 | Idempotent render | byte-equal across same-day re-renders | proved by `test_slim_block_render_is_deterministic_within_one_day` | ✓ |
 | Mock CP harness wires end-to-end | runs all 5 lens configs without error | confirmed | ✓ |
-| Real-API CP score (thin block) | ≥ 95% of pre-slim baseline | **deferred — script ships in Phase 1** (`bench/scripts/measure_phase0_cp_gate.py`); awaits Carlos's manual invocation when API budget is approved | ⚠ deferred |
+| Real-API CP score (thin block) | ≥ 95% of pre-slim baseline | **measured 2026-05-05: ratio 1.0306** (thin 55.83%, pre-slim 54.17% on full 120 scenarios with `claude-sonnet-4-5`) — slim block is non-degrading and very slightly improved. See `phase0-real-api-gate.json`. | ✓ |
 
 ---
 
@@ -50,49 +50,44 @@ All 5 lens configs scored `0/120` accuracy with mean_score `0.0083`. This is **e
 
 ---
 
-## Real-API CP measurement (deferred)
+## Real-API CP measurement — completed 2026-05-05
 
-The v2 evidence-locked gate requires "thin block ≥ 95% of pre-slim baseline" on real CP runs. That requires:
+The v2 evidence-locked gate requires "thin block ≥ 95% of pre-slim baseline"
+on real CP runs. Measured 2026-05-05 against `claude-sonnet-4-5` on the full
+120-scenario corpus via `bench/scripts/measure_phase0_cp_gate.py`. Result:
 
-- `ANTHROPIC_API_KEY` in environment
-- `--driver anthropic` flag
-- ~$10-20 per 120-scenario sweep (rough estimate; actual cost depends on per-scenario token usage)
-- A pre-slim baseline run on the same scenarios — which we *do not have* recorded in `bench/results/`
+| Metric | Value |
+|---|---|
+| Pre-slim ref (77c2d94^) full-skopus accuracy | **54.17%** (65/120 passed, mean score 0.5736) |
+| Pre-slim cost | $4.4396, ~1.20M tokens, ~30 min |
+| Thin-block (HEAD) full-skopus accuracy | **55.83%** (67/120 passed, mean score 0.5878) |
+| Thin-block cost | $4.4079, ~1.20M tokens, ~28 min |
+| **Ratio (thin / pre-slim)** | **1.0306** |
+| Threshold | 0.95 |
+| **Verdict** | **PASS** ✓ |
 
-**Status as of Phase 1 (2026-05-04):** The measurement script ships in this branch
-at `bench/scripts/measure_phase0_cp_gate.py`. The script:
+**Interpretation:** the slim block isn't merely non-degrading — it's
+**slightly better** than the pre-slim block on this corpus, while reducing
+always-loaded tokens by ~75% (~3K → ~266 per session). Total measurement
+cost: $8.85 across both runs.
 
-1. Uses `git worktree add 77c2d94^` to check out the pre-slim ref into a temp directory.
-2. Runs `python3 -m skopus bench run cp --driver anthropic --lens full` against the worktree
-   (with `PYTHONPATH=<worktree>` so the worktree's pre-slim slim-block code is the one
-   actually executing).
-3. Copies the pre-slim result file into `bench/results/pre-slim-<original-name>.json`
-   so the result survives the worktree cleanup.
-4. Runs the same against current HEAD.
-5. Parses both result JSONs, computes `thin_block_full_skopus_accuracy / pre_slim_full_skopus_accuracy`,
-   compares against the 0.95 threshold, and writes a JSON report at
-   `docs/proposals/skopus-v1/phase0-real-api-gate.json`.
-6. Exits 0 on pass, 1 on fail.
+The numbers also tell a second story worth flagging: full-skopus on real
+Sonnet 4.5 lands around 55%, meaning **45% of the CP corpus is still failing
+even with the entire Skopus context available**. That's an opportunity for
+later phases (better retrieval, sub-harness scoping) — not a blocker for
+the Phase 0 gate, but a useful baseline for measuring whether Phase 3+ work
+actually moves the needle.
 
-**Run procedure** (when API budget is approved):
+Full report: `docs/proposals/skopus-v1/phase0-real-api-gate.json`. Pre-slim
+result: `bench/results/pre-slim-skopus-bench-20260505-105222.json`. Thin-block
+result: `bench/results/skopus-bench-20260505-112003.json`.
+
+To re-measure (same procedure, costs ~$9 on Sonnet 4.5 today):
 
 ```bash
-# Cost estimate first — ~$0.20 across both refs at 5 scenarios each
-python3 -m bench.scripts.measure_phase0_cp_gate --limit 5
-
-# Full measurement — ~$5-15 across both refs at 120 scenarios each
-python3 -m bench.scripts.measure_phase0_cp_gate
+python3 -m bench.scripts.measure_phase0_cp_gate --limit 5   # ~$0.34 dry run first
+python3 -m bench.scripts.measure_phase0_cp_gate              # full sweep
 ```
-
-The script REQUIRES `ANTHROPIC_API_KEY` in the environment and exits 1 with
-a clear error if the key is missing.
-
-**As of Phase 1 close (2026-05-04):** the run itself has not been executed —
-`ANTHROPIC_API_KEY` was not present in the active shell during the Phase 1
-implementation session. The Phase 0 deferred row remains deferred, but the
-deferral now points at an executable script rather than "TBD." When Carlos
-runs it, this row gets updated with the actual ratio and verdict, and a row
-is added to the Phase 1 manual-smoke results table.
 
 ---
 
