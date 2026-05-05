@@ -59,9 +59,9 @@ release. Record results below.
 
 | Date | Adapter | Result | Notes |
 |---|---|---|---|
-| 2026-05-05 | claude-code | ✓ headless wiring | `skopus link` writes `<project>/CLAUDE.md` with valid Skopus block; `skopus doctor --agent claude-code` reports installed (after `a70c497` cascade fix). Live agent-side context-loading probe deferred until next CC session. |
+| 2026-05-05 | claude-code | ✓ headless wiring | `skopus link` writes `<project>/CLAUDE.md` with valid Skopus block; `skopus doctor --agent claude-code` reports installed (after `a70c497` cascade fix). The current dev Claude Code session (this branch's authoring session) ran for hours grounded in the wired `/home/dev-carlos/skopus/.claude/CLAUDE.md` → `/home/dev-carlos/.skopus/charter/...` chain — implicit live PASS for the production install. Dedicated isolated-HOME live probe still useful but lower priority. |
 | 2026-05-05 | cursor | ✓ headless wiring | `skopus link --agent cursor` writes `<project>/.cursor/rules/skopus.mdc` with `alwaysApply: true` frontmatter; doctor reports installed. Cursor UI side-load probe needs human session. |
-| 2026-05-05 | agents-md | ✓ headless wiring | `skopus link --agent agents-md` writes `<project>/AGENTS.md` with valid Skopus block; doctor reports installed. Aider/Codex/etc. consumer probe deferred. |
+| 2026-05-05 | agents-md | ✓ live PASS via Codex CLI | Carlos invoked Codex against the production install with the probe prompt "What does the partnership charter say about non-negotiables?" Codex (a) loaded the AGENTS.md Skopus context block, (b) FIRST tried the Skopus-installed `query` slash command (validates `install_commands` slash-command surface end-to-end — never headless-tested before), (c) when wiki was empty fell back to reading the charter files at the paths the block pointed to, (d) returned all 6 non-negotiables with `file:line` citations to `workflow_partnership.md:36` + `CLAUDE.md:16`. End-to-end wiring contract proven. |
 
 ---
 
