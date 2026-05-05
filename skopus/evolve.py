@@ -21,6 +21,10 @@ import subprocess
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 try:
     import questionary
@@ -249,7 +253,7 @@ def run_evolve(
     skopus_dir: Path,
     *,
     entries: list[EvolveEntry] | None = None,
-    queue_decisions_iter=None,
+    queue_decisions_iter: Iterator[tuple[str, object]] | None = None,
     commit: bool = True,
 ) -> EvolveResult:
     """Run the evolve loop.
