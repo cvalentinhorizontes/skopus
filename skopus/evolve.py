@@ -263,10 +263,11 @@ def run_evolve(
         entries: If provided, used directly for the interactive part
             (skips the prompt). If None, the user is prompted.
         queue_decisions_iter: If provided, used as the per-entry decision
-            source for queued drift. If None and a queue is present, the
-            user is prompted interactively per entry. Pass an empty
-            iterator to skip queue drain entirely (no entries → no
-            decisions consumed).
+            source for queued drift. Must yield one ``(decision, payload)``
+            tuple per queued entry; an under-length iterator raises
+            ``StopIteration``. If None and a queue is present, the user
+            is prompted interactively per entry. If None and no queue is
+            present, the queue-drain step is a no-op.
         commit: Whether to git commit at the end.
     """
     # Lazy imports to avoid circular import with skopus.evolve_queue_prompt
