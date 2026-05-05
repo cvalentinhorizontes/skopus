@@ -78,9 +78,9 @@ release. Record results below.
 
 | Date | Adapter | Result | Notes |
 |---|---|---|---|
-| 2026-05-05 | claude-code | ✓ headless | All 5 MCP tools exercised end-to-end via raw stdio JSON-RPC: `skopus_status` (returns 0.8.0 after version-sync fix `cab9c8c`), `skopus_search_memory` (1 match for `"founder"` against seeded HOME), `skopus_get_charter_section` (`"2. Non-Negotiables"` returns full content), `skopus_record_drift` (queue file written at `~/.skopus/queue/drift/`). Headless probe only — actual CC UI tool-list visibility deferred to next session with `HOME=/tmp/skopus-mcp-home` or fresh CC instance. |
+| 2026-05-05 | claude-code | ✓ headless | All 5 MCP tools exercised end-to-end via raw stdio JSON-RPC: `skopus_status` (returns 0.8.0 after version-sync fix `cab9c8c`), `skopus_search_memory` (1 match for `"founder"` against seeded HOME), `skopus_get_charter_section` (`"2. Non-Negotiables"` returns full content), `skopus_record_drift` (queue file written at `~/.skopus/queue/drift/`). Live UI probe deferred (would need a fresh CC session against re-wired `~/.claude/settings.json`). |
+| 2026-05-05 | cursor | ✓ **PROVEN live** (after `eeda5c2`) | First wired Cursor with `skopus link --mcp cursor`. Cursor reported "no Skopus tool" — surfaced the absolute-path bug. After fix `eeda5c2` re-wrote `~/.cursor/mcp.json` with `command: /home/dev-carlos/.local/bin/skopus`, restarted Cursor, asked "Use the skopus_search_memory tool to find any prior corrections about premium quality." Cursor responded: "skopus_search_memory is available and ran successfully." Returned 6 real corpus matches with correct shape (`id`/`scope`/`score`/`path`), top match `seed-founder` at score 9.0 from `/home/dev-carlos/.skopus/memory/feedback/founder_seed.md`. End-to-end MCP roundtrip proven through Cursor's UI. |
 | *not yet run* | cline | — | needs Cline session to verify MCP tool discovery |
-| *not yet run* | cursor | — | needs Cursor session to verify MCP tool discovery |
 
 ### Foundation bugs surfaced by this smoke run
 
@@ -89,6 +89,13 @@ release. Record results below.
 | Claude Code `status()` reports `not_installed` after `install_commands`/guard creates `.claude/` | `a70c497` | Adapter `status()` now checks both project-root and `.claude/` candidate paths. Regression test added. |
 | `__version__` stuck at 0.5.1 despite v0.8.0 pyproject bump → MCP tool, CLI, adapters.lock all reported stale version | `cab9c8c` | Bumped `__version__` to 0.8.0 + added `tests/test_version_sync.py` that fails CI on future drift. |
 | `skopus init` silently re-wires `cwd` project, cross-contaminating real projects when init runs from outside the intended dir | `f42e6cc` | Init now refuses to overwrite a project whose existing Skopus block points at a different `skopus_dir` (unless `--force`). New `--no-autolink` flag opts out of cwd auto-link entirely. 4 regression tests in `tests/test_init_no_contamination.py`. Live-replayed the original bug scenario after the fix — real project's CLAUDE.md unchanged. |
+| MCP installer wrote bare `command: "skopus"` instead of absolute path → desktop agents (Cursor) couldn't spawn the server because their PATH didn't include `~/.local/bin`. Tools never registered. Doctor reported "MCP installed: installed" anyway because the config file was correctly written. Silent failure top-to-bottom. | `eeda5c2` | New `build_server_entry()` in `_common.py` resolves `skopus` to absolute path via `shutil.which` at install time. Raises `SkopusBinaryNotFoundError` with remediation guidance if not found — never silently falls back. 4 regression tests in `tests/test_mcp_installer_command_path.py` + 3 existing per-installer tests updated. Live-replayed: re-wired Cursor → Cursor saw 5 Skopus tools → `skopus_search_memory` probe returned 6 real corpus matches. End-to-end UI roundtrip confirmed. |
+
+### Open follow-ups (from the smoke discovery, NOT blocking Phase 2 gate)
+
+- **`scope: permanent` legacy values pass through search.** The wizard's seed templates use `scope: permanent` for founder_seed.md. The loader doesn't validate scope on read (only `record_drift` validates on write against `{user, project, team}`). Search returns these entries with the legacy scope value. Mild internal inconsistency — should normalize `permanent` → `user` (or extend `VALID_SCOPE` to include it) in a future migration sweep.
+- **`skopus unlink --mcp <agent>` doesn't exist.** Installer modules expose `uninstall_*_mcp()` functions and they're tested, but no CLI surface. Today users hand-edit JSON to remove a wiring. Tracked for v0.8.x.
+- **CC + Cline live MCP probes.** Cursor proved the spawn-path fix works in a real desktop environment. The same fix applies to CC and Cline by construction (same installer, same `build_server_entry()`). Probes still useful but lower priority — core MCP roundtrip is now proven on at least one desktop agent.
 
 ---
 
