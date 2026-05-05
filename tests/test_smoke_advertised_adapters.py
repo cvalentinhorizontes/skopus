@@ -135,3 +135,38 @@ def test_agents_md_adapter_does_not_use_dotdir_even_when_present(tmp_path):
     assert (project / "AGENTS.md").exists()
     assert not (project / ".claude" / "AGENTS.md").exists()
     assert not (project / ".cursor" / "AGENTS.md").exists()
+
+
+def test_claude_code_status_correct_after_install_then_dotdir_appears(tmp_path):
+    """Architectural cascade: skopus link runs `install()` (writes
+    project-root CLAUDE.md when .claude/ doesn't exist yet) and THEN
+    `install_commands()` (creates .claude/commands/ for slash commands).
+    The dotdir suddenly appearing must not flip status() to NOT_INSTALLED.
+
+    This was a real bug in v0.7.0/v0.8.0: the file lived at
+    <project>/CLAUDE.md but status() looked at <project>/.claude/CLAUDE.md
+    once install_commands had created the dotdir. Doctor reported
+    `not_installed` for a perfectly wired project. Fix: status() checks
+    BOTH candidate paths."""
+    project = tmp_path / "project"
+    project.mkdir()
+    adapter = ClaudeCodeAdapter()
+
+    # Step 1: install while .claude/ does NOT exist — writes to project root.
+    adapter.install(
+        charter_path=tmp_path / ".skopus" / "charter",
+        vault_path=tmp_path / "Vault",
+        project_path=project,
+    )
+    assert (project / "CLAUDE.md").exists()
+    assert not (project / ".claude").exists()
+    assert adapter.status(project_path=project) is AdapterStatus.INSTALLED
+
+    # Step 2: simulate install_commands() creating .claude/ for slash commands.
+    (project / ".claude" / "commands").mkdir(parents=True)
+
+    # Step 3: status MUST still report INSTALLED (file is at root, that's valid).
+    assert adapter.status(project_path=project) is AdapterStatus.INSTALLED, (
+        "status() regressed: file at project-root CLAUDE.md is valid wiring; "
+        ".claude/ appearing later (from install_commands) must not flip status."
+    )
