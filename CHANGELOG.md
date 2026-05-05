@@ -4,6 +4,88 @@ All notable changes to Skopus are documented here. Format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] — 2026-05-04
+
+Two-phase release: v0.6.0 (Phase 0 lock-in) + v0.7.0 (verified adapter
+bridges) + v0.8.0 (MCP server). Released as a single tag because the
+intermediate phases were never published.
+
+### Added
+
+**Phase 0 — Slim adapter context (v0.6.0):**
+- Hard caps on the slim Skopus context block: ≤ 35 lines, ≤ 2000 chars,
+  ≤ 600 tokens — enforced by regression test so silent re-bloat trips CI.
+- Determinism test on the block render so `MarkdownAdapter.install()`
+  remains truly idempotent.
+
+**Phase 1 — Verified adapter bridges (v0.7.0):**
+- `AdapterTier` enum (`ADVERTISED` / `EXPERIMENTAL` / `UNVERIFIED`) with
+  `UNVERIFIED` as fail-closed default. Marketing claims of support
+  require the `ADVERTISED` tier.
+- `AgentsMdAdapter` — universal AGENTS.md fallback writer (Linux
+  Foundation cross-agent standard). Claude Code + Cursor + AGENTS.md are
+  the three v0.7.0 advertised bridges.
+- `skopus doctor --agent <name>` — per-adapter introspection table with
+  tier, detect, project status.
+- Pytest smoke harness (`tests/test_smoke_advertised_adapters.py`) for
+  the file-side contract per advertised adapter.
+- `bench/scripts/measure_phase0_cp_gate.py` — script for the deferred
+  Phase 0 real-API CP measurement (runs the pre-slim baseline via git
+  worktree against the Anthropic driver).
+
+**Phase 2 — MCP server (v0.8.0):**
+- Stdio MCP server (`skopus mcp serve`) using Anthropic's `mcp>=1.0`
+  SDK (FastMCP). Exposes 5 tools: `skopus_status`,
+  `skopus_search_memory`, `skopus_query_vault`,
+  `skopus_get_charter_section`, `skopus_record_drift`.
+- Schema-aware memory loader (`skopus/mcp/memory_index.py`) reads
+  existing YAML frontmatter and defaults missing v2 §4.1 fields.
+  Logs malformed entries at WARNING (4 entries in current corpus
+  surface this way) instead of silently dropping them.
+- Per-agent MCP installers (`skopus link --mcp claude-code|cline|cursor`)
+  with corrupt-config backup safety: invalid existing JSON gets renamed
+  to `<name>.bak-<unix-ts>` before the fresh write.
+- `skopus doctor --agent <name>` gains a 4th row reporting MCP install
+  status (installed / not_installed / config-unparseable / n/a).
+- `bench/scripts/migrate_memory_schema.py` — idempotent one-shot for
+  populating v2 §4.1 defaults across existing feedback frontmatter.
+  Defaults intentionally weak (`source=imported`, `confidence=weak`,
+  etc.) so they don't lie. Shipped but run manually by the user at
+  `/charter-evolve` time.
+
+### Changed
+
+- README adapter table now includes a **Tier** column and the AGENTS.md
+  universal-fallback row. Roadmap refreshed for v0.8.0.
+- Wizard `AGENT_CHOICES` drops the stale `OpenCode` option (no
+  registered adapter) and adds `AGENTS.md`.
+- CLI `skopus link` gains `--mcp <agent>` with mutual-exclusivity
+  against `--agent` to prevent silent flag-dropping.
+
+### Dependencies
+
+- Added `mcp>=1.0` (Anthropic's MCP SDK).
+
+### Deferred
+
+- Real-API Correction-Persistence gate measurement against the pre-slim
+  baseline. Script ships in `bench/scripts/measure_phase0_cp_gate.py`
+  but the run requires `ANTHROPIC_API_KEY` and ~$5-15 in API spend;
+  awaits user authorization.
+- Live migration of `~/.skopus/memory/feedback/` to the v2 §4.1 schema.
+  Script shipped; user runs it manually after reviewing `--dry-run`
+  output.
+- Manual smoke verification per agent for the MCP server. Procedure
+  shipped in `docs/proposals/skopus-v1/phase2-manual-smoke.md`; run
+  before tagging v0.8.0.
+
+### Tests
+
+- 197 → 272 passing tests (+75 across Phase 2). Phase 0 added 2 lock-in
+  tests; Phase 1 added 22 (tier + AGENTS.md adapter + smoke + doctor +
+  agent registration); Phase 2 added 75 (MCP server + 5 tools +
+  schema-aware loader + 3 installers + link --mcp + doctor MCP row).
+
 ## [0.5.1] — 2026-04-30
 
 Docs + metadata patch release. No code changes; safe upgrade for everyone.
