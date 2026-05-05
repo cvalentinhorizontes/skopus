@@ -249,38 +249,83 @@ def run_evolve(
     skopus_dir: Path,
     *,
     entries: list[EvolveEntry] | None = None,
+    queue_decisions_iter=None,
     commit: bool = True,
 ) -> EvolveResult:
     """Run the evolve loop.
 
-    If entries is None, prompt the user interactively. Otherwise use the
-    provided entries directly (for testing or programmatic use).
+    Drains queued drift entries from ``<skopus_dir>/queue/drift/`` FIRST
+    (Phase 3), then collects interactive entries from the user (Phase 0/1).
+    Approved queue entries flow through the same write/commit path as
+    interactive entries.
+
+    Args:
+        entries: If provided, used directly for the interactive part
+            (skips the prompt). If None, the user is prompted.
+        queue_decisions_iter: If provided, used as the per-entry decision
+            source for queued drift. If None and a queue is present, the
+            user is prompted interactively per entry. Pass an empty
+            iterator to skip queue drain entirely (no entries → no
+            decisions consumed).
+        commit: Whether to git commit at the end.
     """
+    # Lazy imports to avoid circular import with skopus.evolve_queue_prompt
+    # (which imports EvolveEntry from this module).
+    from skopus.evolve_queue import (
+        delete_queue_entry,
+        load_queue_entries,
+    )
+    from skopus.evolve_queue_prompt import review_queue_entries
+
+    # --- Phase 3 step: drain the drift queue ---
+    queued = load_queue_entries(skopus_dir)
+    queue_approved: list[EvolveEntry] = []
+    if queued:
+        if queue_decisions_iter is None:
+            # Interactive prompt — module built in Task 50.
+            from skopus.evolve_queue_prompt_interactive import (
+                interactive_decisions,
+            )
+
+            queue_decisions_iter = interactive_decisions(queued)
+        review = review_queue_entries(queued, decisions_iter=queue_decisions_iter)
+        queue_approved = [a.evolve_entry for a in review.approved]
+        for a in review.approved:
+            delete_queue_entry(a.source_queue_entry)
+        for r in review.rejected:
+            delete_queue_entry(r)
+        # Deferred entries stay in the queue — no action.
+
+    # --- Existing interactive prompt path (unchanged) ---
     if entries is None:
         entries = _prompt_entries()
 
-    result = EvolveResult(entries=entries)
-    if not entries:
+    # Combine queue-derived + interactive entries so they share the
+    # downstream write/commit path.
+    all_entries = queue_approved + entries
+
+    result = EvolveResult(entries=all_entries)
+    if not all_entries:
         result.message = "No entries captured; charter unchanged."
         return result
 
     # Write feedback files
-    for entry in entries:
+    for entry in all_entries:
         path = _write_feedback_file(skopus_dir, entry)
         result.feedback_files_written.append(path)
 
     # Append to charter sections
-    result.charter_sections_updated = _append_to_charter(skopus_dir, entries)
+    result.charter_sections_updated = _append_to_charter(skopus_dir, all_entries)
 
     # Commit
     if commit:
         result.committed = _commit(
             skopus_dir,
-            f"charter-evolve: {len(entries)} entr{'y' if len(entries) == 1 else 'ies'}",
+            f"charter-evolve: {len(all_entries)} entr{'y' if len(all_entries) == 1 else 'ies'}",
         )
 
     result.message = (
-        f"Captured {len(entries)} entries: "
+        f"Captured {len(all_entries)} entries: "
         f"{len(result.feedback_files_written)} feedback file(s), "
         f"{len(result.charter_sections_updated)} charter section(s) updated"
     )
