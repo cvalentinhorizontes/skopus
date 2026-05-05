@@ -4,6 +4,7 @@ Writes (or merges into) Claude Code's mcp config so it discovers
 the Skopus stdio MCP server on next launch."""
 
 import json
+from pathlib import Path
 
 from skopus.mcp.installers.claude_code import (
     install_claude_code_mcp,
@@ -19,7 +20,18 @@ def test_install_creates_config_when_missing(tmp_path):
     config_file = home / ".claude" / "settings.json"
     assert config_file.exists()
     cfg = json.loads(config_file.read_text())
-    assert cfg["mcpServers"]["skopus"]["command"] == "skopus"
+    # The command MUST be an absolute path to the skopus binary.
+    # Desktop agents (Cursor, Claude Code Desktop, etc.) spawn MCP servers
+    # with their own minimal PATH that typically does NOT include
+    # ~/.local/bin or other pipx/venv dirs. A bare "skopus" string fails
+    # silently in those runtimes — the bug Phase 2 manual smoke surfaced
+    # in `~/.cursor/mcp.json` on 2026-05-05.
+    cmd = cfg["mcpServers"]["skopus"]["command"]
+    assert Path(cmd).is_absolute(), (
+        f"command must be absolute path, got {cmd!r}. "
+        "Bare names fail in desktop-agent spawn environments."
+    )
+    assert Path(cmd).name == "skopus", f"command must point at the skopus binary, got {cmd!r}"
     assert cfg["mcpServers"]["skopus"]["args"] == ["mcp", "serve"]
 
 
