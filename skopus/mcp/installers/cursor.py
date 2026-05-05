@@ -13,9 +13,9 @@ import json
 from pathlib import Path
 
 from skopus.mcp.installers._common import (
-    SERVER_ENTRY,
     SERVER_NAME,
     backup_corrupt_config,
+    build_server_entry,
     load_mcp_config,
 )
 
@@ -44,7 +44,7 @@ def install_cursor_mcp(home: Path | None = None) -> dict:
         cfg["mcpServers"] = {}
 
     action = "updated" if SERVER_NAME in cfg["mcpServers"] else "created"
-    cfg["mcpServers"][SERVER_NAME] = SERVER_ENTRY
+    cfg["mcpServers"][SERVER_NAME] = build_server_entry()
 
     config_path.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
     return {"written": True, "config_path": str(config_path), "action": action}

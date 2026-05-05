@@ -3,6 +3,7 @@
 Mirrors Claude Code installer tests but targets ~/.cursor/mcp.json."""
 
 import json
+from pathlib import Path
 
 from skopus.mcp.installers.cursor import (
     install_cursor_mcp,
@@ -18,7 +19,12 @@ def test_install_creates_config_when_missing(tmp_path):
     config_file = home / ".cursor" / "mcp.json"
     assert config_file.exists()
     cfg = json.loads(config_file.read_text())
-    assert cfg["mcpServers"]["skopus"]["command"] == "skopus"
+    cmd = cfg["mcpServers"]["skopus"]["command"]
+    assert Path(cmd).is_absolute(), (
+        f"command must be absolute path, got {cmd!r}. "
+        "Bare names fail in desktop-agent spawn environments."
+    )
+    assert Path(cmd).name == "skopus"
     assert cfg["mcpServers"]["skopus"]["args"] == ["mcp", "serve"]
 
 
