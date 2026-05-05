@@ -59,9 +59,9 @@ release. Record results below.
 
 | Date | Adapter | Result | Notes |
 |---|---|---|---|
-| *not yet run* | claude-code | — | run before v0.7.0 release |
-| *not yet run* | cursor | — | run before v0.7.0 release |
-| *not yet run* | agents-md | — | run before v0.7.0 release |
+| 2026-05-05 | claude-code | ✓ headless wiring | `skopus link` writes `<project>/CLAUDE.md` with valid Skopus block; `skopus doctor --agent claude-code` reports installed (after `a70c497` cascade fix). Live agent-side context-loading probe deferred until next CC session. |
+| 2026-05-05 | cursor | ✓ headless wiring | `skopus link --agent cursor` writes `<project>/.cursor/rules/skopus.mdc` with `alwaysApply: true` frontmatter; doctor reports installed. Cursor UI side-load probe needs human session. |
+| 2026-05-05 | agents-md | ✓ headless wiring | `skopus link --agent agents-md` writes `<project>/AGENTS.md` with valid Skopus block; doctor reports installed. Aider/Codex/etc. consumer probe deferred. |
 
 ---
 

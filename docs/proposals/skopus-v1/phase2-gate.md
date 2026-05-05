@@ -78,9 +78,17 @@ release. Record results below.
 
 | Date | Adapter | Result | Notes |
 |---|---|---|---|
-| *not yet run* | claude-code | — | run before v0.8.0 release |
-| *not yet run* | cline | — | run before v0.8.0 release |
-| *not yet run* | cursor | — | run before v0.8.0 release |
+| 2026-05-05 | claude-code | ✓ headless | All 5 MCP tools exercised end-to-end via raw stdio JSON-RPC: `skopus_status` (returns 0.8.0 after version-sync fix `cab9c8c`), `skopus_search_memory` (1 match for `"founder"` against seeded HOME), `skopus_get_charter_section` (`"2. Non-Negotiables"` returns full content), `skopus_record_drift` (queue file written at `~/.skopus/queue/drift/`). Headless probe only — actual CC UI tool-list visibility deferred to next session with `HOME=/tmp/skopus-mcp-home` or fresh CC instance. |
+| *not yet run* | cline | — | needs Cline session to verify MCP tool discovery |
+| *not yet run* | cursor | — | needs Cursor session to verify MCP tool discovery |
+
+### Foundation bugs surfaced by this smoke run
+
+| Bug | Fix commit | Description |
+|---|---|---|
+| Claude Code `status()` reports `not_installed` after `install_commands`/guard creates `.claude/` | `a70c497` | Adapter `status()` now checks both project-root and `.claude/` candidate paths. Regression test added. |
+| `__version__` stuck at 0.5.1 despite v0.8.0 pyproject bump → MCP tool, CLI, adapters.lock all reported stale version | `cab9c8c` | Bumped `__version__` to 0.8.0 + added `tests/test_version_sync.py` that fails CI on future drift. |
+| `skopus init` silently re-wires `cwd` project, cross-contaminating real projects when init runs from outside the intended dir | (open) | UX trap. Init should either prompt for the link target or require an explicit flag. Tracked for next foundation pass. |
 
 ---
 
