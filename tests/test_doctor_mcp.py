@@ -73,3 +73,45 @@ def test_doctor_shows_mcp_corrupt_config(tmp_path, monkeypatch):
     # Corrupt config should not crash; should report a clear state
     assert "mcp" in out
     assert "config-unparseable" in out or "unparseable" in out or "not_installed" in out
+
+
+def test_doctor_shows_mcp_installed_for_codex(tmp_path, monkeypatch):
+    """Codex stores MCP config in TOML; doctor must read TOML (not JSON)
+    and look up snake_case mcp_servers (not mcpServers)."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    _seed(tmp_path)
+    codex_dir = tmp_path / ".codex"
+    codex_dir.mkdir()
+    (codex_dir / "config.toml").write_text(
+        '[mcp_servers.skopus]\ncommand = "/usr/bin/skopus"\nargs = ["mcp", "serve"]\n'
+    )
+    result = runner.invoke(app, ["doctor", "--agent", "codex"])
+    assert result.exit_code == 0
+    out = result.output.lower()
+    assert "mcp" in out
+    assert "installed" in out
+
+
+def test_doctor_shows_mcp_not_installed_for_codex(tmp_path, monkeypatch):
+    """Codex with no config.toml should report not_installed (not crash)."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    _seed(tmp_path)
+    result = runner.invoke(app, ["doctor", "--agent", "codex"])
+    assert result.exit_code == 0
+    out = result.output.lower()
+    assert "mcp" in out
+    assert "not_installed" in out or "not installed" in out
+
+
+def test_doctor_shows_mcp_corrupt_toml_for_codex(tmp_path, monkeypatch):
+    """Unparseable TOML must not crash; doctor should report a clear state."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    _seed(tmp_path)
+    codex_dir = tmp_path / ".codex"
+    codex_dir.mkdir()
+    (codex_dir / "config.toml").write_text("this is not [valid toml = ")
+    result = runner.invoke(app, ["doctor", "--agent", "codex"])
+    assert result.exit_code == 0
+    out = result.output.lower()
+    assert "mcp" in out
+    assert "config-unparseable" in out or "unparseable" in out or "not_installed" in out

@@ -48,6 +48,29 @@ def test_link_mcp_cursor_writes_config(tmp_path, monkeypatch):
     assert cfg_path.exists()
 
 
+def test_link_mcp_codex_writes_config(tmp_path, monkeypatch):
+    """Codex stores MCP servers in TOML at ~/.codex/config.toml under
+    [mcp_servers.skopus] (snake_case, not the camelCase mcpServers used by
+    Claude Code/Cline/Cursor). Schema:
+    https://developers.openai.com/codex/config-reference"""
+    import sys
+
+    if sys.version_info >= (3, 11):
+        import tomllib
+    else:  # pragma: no cover
+        import tomli as tomllib
+
+    monkeypatch.setenv("HOME", str(tmp_path))
+    _seed_skopus(tmp_path)
+
+    result = runner.invoke(app, ["link", "--mcp", "codex"])
+    assert result.exit_code == 0, result.output
+    cfg_path = tmp_path / ".codex" / "config.toml"
+    assert cfg_path.exists()
+    cfg = tomllib.loads(cfg_path.read_text())
+    assert "skopus" in cfg["mcp_servers"]
+
+
 def test_link_mcp_unknown_agent_errors_clearly(tmp_path, monkeypatch):
     monkeypatch.setenv("HOME", str(tmp_path))
     _seed_skopus(tmp_path)
@@ -56,10 +79,11 @@ def test_link_mcp_unknown_agent_errors_clearly(tmp_path, monkeypatch):
     assert result.exit_code != 0
     out = result.output.lower()
     assert "no-such-agent" in out
-    # Error must list the three known MCP installers
+    # Error must list all four known MCP installers
     assert "claude-code" in out
     assert "cline" in out
     assert "cursor" in out
+    assert "codex" in out
 
 
 def test_link_mcp_with_explicit_non_default_agent_errors(tmp_path, monkeypatch):
