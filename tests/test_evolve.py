@@ -1,5 +1,7 @@
 """Tests for skopus.evolve."""
 
+import json
+
 from skopus.evolve import (
     EvolveEntry,
     _append_to_charter,
@@ -154,3 +156,137 @@ def test_run_evolve_commits_when_enabled(tmp_path):
         text=True,
     )
     assert "charter-evolve" in log.stdout
+
+
+def _seed_queue_entry(skopus_dir, **overrides):
+    """Helper: write a drift-queue JSON entry as record_drift would."""
+    queue_dir = skopus_dir / "queue" / "drift"
+    queue_dir.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "id": "queue1",
+        "summary": "Agent skipped reading project memory before refactor",
+        "source": "explicit-correction",
+        "confidence": "confirmed",
+        "scope": "project",
+        "captured_at": "2026-05-05T13:00:00+00:00",
+    }
+    payload.update(overrides)
+    out = queue_dir / f"{payload['captured_at'][:10]}-{payload['id']}.json"
+    out.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return out
+
+
+def test_run_evolve_drains_approved_queue_entries(tmp_path):
+    """Approved queue entries land in feedback files just like interactive entries."""
+    skopus_dir = tmp_path / ".skopus"
+    (skopus_dir / "memory" / "feedback").mkdir(parents=True)
+    (skopus_dir / "charter").mkdir(parents=True)
+    (skopus_dir / "charter" / "workflow_partnership.md").write_text("# Charter\n")
+
+    queue_path = _seed_queue_entry(skopus_dir)
+
+    queue_decisions = iter([("approve", "Read project memory before any refactor.")])
+    run_evolve(
+        skopus_dir,
+        entries=[],
+        queue_decisions_iter=queue_decisions,
+        commit=False,
+    )
+
+    fb_files = list((skopus_dir / "memory" / "feedback").glob("*.md"))
+    assert len(fb_files) == 1
+    text = fb_files[0].read_text()
+    assert "skipped reading project memory" in text.lower()
+    assert "Read project memory before any refactor." in text
+
+    assert not queue_path.exists()
+
+
+def test_run_evolve_keeps_deferred_queue_entries(tmp_path):
+    """Deferred entries remain in the queue for next session."""
+    skopus_dir = tmp_path / ".skopus"
+    (skopus_dir / "memory" / "feedback").mkdir(parents=True)
+    (skopus_dir / "charter").mkdir(parents=True)
+    (skopus_dir / "charter" / "workflow_partnership.md").write_text("# Charter\n")
+
+    queue_path = _seed_queue_entry(skopus_dir, id="defer-me")
+
+    queue_decisions = iter([("defer", None)])
+    run_evolve(
+        skopus_dir,
+        entries=[],
+        queue_decisions_iter=queue_decisions,
+        commit=False,
+    )
+
+    assert queue_path.exists()
+    fb_files = list((skopus_dir / "memory" / "feedback").glob("*.md"))
+    assert fb_files == []
+
+
+def test_run_evolve_deletes_rejected_queue_entries_without_writing_feedback(tmp_path):
+    skopus_dir = tmp_path / ".skopus"
+    (skopus_dir / "memory" / "feedback").mkdir(parents=True)
+    (skopus_dir / "charter").mkdir(parents=True)
+    (skopus_dir / "charter" / "workflow_partnership.md").write_text("# Charter\n")
+
+    queue_path = _seed_queue_entry(skopus_dir, id="reject-me")
+
+    queue_decisions = iter([("reject", None)])
+    run_evolve(
+        skopus_dir,
+        entries=[],
+        queue_decisions_iter=queue_decisions,
+        commit=False,
+    )
+
+    assert not queue_path.exists()
+    fb_files = list((skopus_dir / "memory" / "feedback").glob("*.md"))
+    assert fb_files == []
+
+
+def test_run_evolve_works_with_no_queue(tmp_path):
+    """Backward compat: existing callers that don't pass queue_decisions_iter
+    continue to work with interactive-only flow."""
+    skopus_dir = tmp_path / ".skopus"
+    (skopus_dir / "memory" / "feedback").mkdir(parents=True)
+    (skopus_dir / "charter").mkdir(parents=True)
+    (skopus_dir / "charter" / "workflow_partnership.md").write_text("# Charter\n")
+
+    run_evolve(
+        skopus_dir,
+        entries=[EvolveEntry(kind="rule", title="t", why="w", how_to_apply="h")],
+        commit=False,
+    )
+    fb_files = list((skopus_dir / "memory" / "feedback").glob("*.md"))
+    assert len(fb_files) == 1
+
+
+def test_run_evolve_uses_interactive_decisions_when_iter_is_none(tmp_path, monkeypatch):
+    """Wires the cascade end-to-end: run_evolve with a non-empty queue and
+    queue_decisions_iter=None lazy-imports interactive_decisions, which gets
+    its questionary calls mocked. Closes the Task 49 reviewer's gap that
+    would have shipped a ModuleNotFoundError to a real user."""
+    from unittest.mock import MagicMock, patch
+
+    skopus_dir = tmp_path / ".skopus"
+    (skopus_dir / "memory" / "feedback").mkdir(parents=True)
+    (skopus_dir / "charter").mkdir(parents=True)
+    (skopus_dir / "charter" / "workflow_partnership.md").write_text("# Charter\n")
+
+    queue_path = _seed_queue_entry(skopus_dir, id="cascade-test")
+
+    # Mock questionary inside the bridge module
+    with patch("skopus.evolve_queue_prompt_interactive.questionary") as mock_q:
+        mock_select = MagicMock()
+        mock_select.ask.return_value = "reject"
+        mock_q.select.return_value = mock_select
+
+        run_evolve(skopus_dir, entries=[], commit=False)
+        # Note: queue_decisions_iter is intentionally omitted — that's what
+        # triggers the lazy import of interactive_decisions.
+
+    # Reject means: queue file gone, no feedback file written.
+    assert not queue_path.exists()
+    fb_files = list((skopus_dir / "memory" / "feedback").glob("*.md"))
+    assert fb_files == []

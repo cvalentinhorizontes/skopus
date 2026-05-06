@@ -16,6 +16,7 @@ from skopus.adapters.base import (
     Adapter,
     AdapterInstallResult,
     AdapterStatus,
+    AdapterTier,
     build_skopus_block,
 )
 from skopus.commands import load_command_templates, write_markdown_command
@@ -71,6 +72,7 @@ class ClaudeCodeAdapter(Adapter):
 
     name = "claude-code"
     display_name = "Claude Code"
+    tier = AdapterTier.ADVERTISED
 
     def detect(self) -> bool:
         """Claude Code stores global state under ~/.claude/."""
@@ -179,14 +181,25 @@ class ClaudeCodeAdapter(Adapter):
         )
 
     def status(self, project_path: Path | None = None) -> AdapterStatus:
-        """Report whether the wiring is intact in the project."""
+        """Report whether the wiring is intact in the project.
+
+        Checks BOTH possible locations: ``<project>/.claude/CLAUDE.md`` and
+        ``<project>/CLAUDE.md``. The wiring is INSTALLED if either holds the
+        Skopus markers — `install()` and `install_commands()` can leave the
+        file in either spot depending on whether ``.claude/`` existed at
+        install time vs. was created later for slash commands.
+        """
         project_path = project_path or Path.cwd()
-        claude_md = claude_md_path(project_path)
-        if not claude_md.exists():
-            return AdapterStatus.NOT_INSTALLED
-        content = claude_md.read_text(encoding="utf-8")
-        if SKOPUS_SECTION_START in content and SKOPUS_SECTION_END in content:
-            return AdapterStatus.INSTALLED
+        candidates = [
+            project_path / ".claude" / "CLAUDE.md",
+            project_path / "CLAUDE.md",
+        ]
+        for candidate in candidates:
+            if not candidate.is_file():
+                continue
+            content = candidate.read_text(encoding="utf-8")
+            if SKOPUS_SECTION_START in content and SKOPUS_SECTION_END in content:
+                return AdapterStatus.INSTALLED
         return AdapterStatus.NOT_INSTALLED
 
     def session_end_hook(self) -> str:

@@ -20,8 +20,12 @@ from rich.panel import Panel
 from rich.table import Table
 
 from skopus import __version__
-from skopus.adapters import ADAPTERS, get_adapter
-from skopus.adapters.base import AdapterStatus
+from skopus.adapters import ADAPTERS, AdapterTier, get_adapter
+from skopus.adapters.base import (
+    SKOPUS_SECTION_END,
+    SKOPUS_SECTION_START,
+    AdapterStatus,
+)
 from skopus.evolve import run_evolve
 from skopus.graphify_bridge import (
     first_build_hint,
@@ -303,6 +307,41 @@ def update() -> None:
     )
 
 
+def _detect_conflicting_skopus_wiring(project: Path, target_skopus_dir: Path) -> Path | None:
+    """Return the existing Skopus context file in `project` if it points at a
+    skopus_dir DIFFERENT from `target_skopus_dir`, else None.
+
+    Checks the canonical context-file locations the ADVERTISED adapters write
+    to. A conflict means the user is about to silently re-wire a project
+    that's currently linked elsewhere — exactly the cross-contamination bug
+    surfaced by the Phase 2 manual smoke run.
+    """
+    candidates = [
+        project / ".claude" / "CLAUDE.md",
+        project / "CLAUDE.md",
+        project / "AGENTS.md",
+        project / ".cursor" / "rules" / "skopus.mdc",
+    ]
+    target_str = str(target_skopus_dir.resolve())
+    for candidate in candidates:
+        if not candidate.is_file():
+            continue
+        text = candidate.read_text(encoding="utf-8")
+        if SKOPUS_SECTION_START not in text or SKOPUS_SECTION_END not in text:
+            continue
+        # Extract the Skopus block and look for any path inside that points at
+        # a different skopus_dir. We compare against the resolved target path
+        # so symlinks and trailing-slash variations don't false-positive.
+        start = text.index(SKOPUS_SECTION_START)
+        end = text.index(SKOPUS_SECTION_END) + len(SKOPUS_SECTION_END)
+        block = text[start:end]
+        if target_str in block:
+            # Already pointing at the same target — idempotent re-wire is fine.
+            continue
+        return candidate
+    return None
+
+
 @app.command()
 def init(
     non_interactive: bool = typer.Option(
@@ -326,6 +365,11 @@ def init(
         "--force",
         "-f",
         help="Overwrite existing files. Default is non-destructive merge.",
+    ),
+    no_autolink: bool = typer.Option(
+        False,
+        "--no-autolink",
+        help="Skip the cwd auto-link step. Global ~/.skopus/ scaffold still runs.",
     ),
 ) -> None:
     """Initialize Skopus — one command, everything set up."""
@@ -369,8 +413,38 @@ def init(
     # --- Step 3: Auto-link current project if inside a git repo ---
     cwd = Path.cwd()
     wired_any = False
-    if (cwd / ".git").exists():
-        console.print(f"\n[bold]Linking current project:[/bold] {cwd.name}")
+    autolink_ok = True
+    if no_autolink:
+        console.print(
+            "\n[dim]Skipping cwd auto-link (--no-autolink). "
+            "Run [italic]skopus link[/italic] inside a project to wire it.[/dim]"
+        )
+        autolink_ok = False
+    elif (cwd / ".git").exists():
+        # Conflict check: refuse to re-wire a project already linked elsewhere
+        # unless --force. Prevents the cross-contamination bug where running
+        # `HOME=/tmp/throwaway skopus init` from a real project's dir
+        # silently rewrites that project's CLAUDE.md to point at the
+        # throwaway HOME's skopus_dir.
+        conflict_path = _detect_conflicting_skopus_wiring(cwd, skopus_dir)
+        if conflict_path is not None and not force:
+            console.print(
+                f"\n[red]✗[/red] [bold]{cwd.name}[/bold] is already linked to a "
+                f"different ~/.skopus/."
+            )
+            console.print(f"  Existing wiring: [cyan]{conflict_path}[/cyan]")
+            console.print(
+                "  Refusing to overwrite to avoid cross-contamination. "
+                "Re-run with [italic]--force[/italic] to override, or "
+                "[italic]--no-autolink[/italic] to skip the cwd wiring entirely."
+            )
+            autolink_ok = False
+        else:
+            console.print(f"\n[bold]Linking current project:[/bold] {cwd.name}")
+    else:
+        autolink_ok = False  # no .git in cwd — fall through to "Not inside a git repo" hint
+
+    if autolink_ok:
         for agent_name in result.agents:
             key = agent_name.lower().replace(" ", "-")
             if key not in ADAPTERS:
@@ -410,7 +484,10 @@ def init(
                 )
                 if graphify_result.installed:
                     console.print(f"  [green]✓[/green] {graphify_result.message}")
-    else:
+    elif not no_autolink and not (cwd / ".git").exists():
+        # Only show the "not inside a git repo" hint when that's actually the
+        # reason — not when the user explicitly opted out via --no-autolink
+        # or when we refused due to a conflict (those have their own messages).
         console.print(
             "\n[dim]Not inside a git repo — run [italic]skopus link[/italic] "
             "inside a project to wire it.[/dim]"
@@ -430,6 +507,36 @@ def init(
         )
     elif not wired_any:
         console.print("[bold cyan]Next:[/bold cyan] [italic]cd my-project && skopus link[/italic]")
+    console.print(
+        "[dim]Tip: wire the MCP server into your agent with "
+        "[italic]skopus link --mcp claude-code[/italic] (or cline / cursor) "
+        "so Skopus tools are queryable on demand.[/dim]"
+    )
+
+
+def _link_mcp(name: str) -> None:
+    """Dispatch `skopus link --mcp <name>` to the right MCP installer."""
+    from skopus.mcp.installers.claude_code import install_claude_code_mcp
+    from skopus.mcp.installers.cline import install_cline_mcp
+    from skopus.mcp.installers.cursor import install_cursor_mcp
+
+    installers = {
+        "claude-code": install_claude_code_mcp,
+        "cline": install_cline_mcp,
+        "cursor": install_cursor_mcp,
+    }
+
+    if name not in installers:
+        console.print(f"[red]✗[/red] Unknown MCP installer: [bold]{name}[/bold]")
+        console.print(f"[dim]Known: {', '.join(sorted(installers))}[/dim]")
+        raise typer.Exit(code=1)
+
+    result = installers[name]()
+    if result.get("written"):
+        console.print(
+            f"[green]✓[/green] Wired Skopus MCP into [bold]{name}[/bold] at "
+            f"[cyan]{result['config_path']}[/cyan] ({result['action']})"
+        )
 
 
 @app.command()
@@ -447,12 +554,40 @@ def link(
         "-a",
         help="Which adapter to use. Default: claude-code.",
     ),
+    mcp: str | None = typer.Option(
+        None,
+        "--mcp",
+        help="Wire `skopus mcp serve` into the named agent's MCP config "
+        "(claude-code, cline, cursor). Skips the legacy adapter wiring.",
+    ),
 ) -> None:
-    """Wire Skopus into a project's CLAUDE.md."""
+    """Wire Skopus into a project's CLAUDE.md.
+
+    With --mcp <agent>, instead wires the Skopus stdio MCP server into the
+    agent's MCP config (e.g. ~/.claude/settings.json) so the agent can
+    discover Skopus tools. Skips the legacy adapter file wiring.
+    """
     skopus_dir = resolve_skopus_path()
     if not skopus_dir.exists():
         console.print("[red]✗[/red] Run [italic]skopus init[/italic] first.")
         raise typer.Exit(code=1)
+
+    # Mutual exclusivity: --mcp owns the install path; --agent is for the legacy path.
+    # Detect when the user explicitly passed --agent alongside --mcp by comparing
+    # against the typer default. Not perfect (a user explicitly typing
+    # `--agent claude-code` is indistinguishable from default), but catches the
+    # common footgun: --mcp cline --agent cursor.
+    if mcp is not None and agent != "claude-code":
+        console.print(
+            "[red]✗[/red] --mcp and --agent are mutually exclusive. "
+            f"You passed --mcp={mcp} and --agent={agent}. "
+            "Use --mcp alone for MCP install, or drop --mcp to use the adapter."
+        )
+        raise typer.Exit(code=1)
+
+    if mcp is not None:
+        _link_mcp(mcp)
+        return
 
     vault_dir = skopus_dir / "vault"
     resolved_project = project_path.resolve()
@@ -623,6 +758,26 @@ bench_app = typer.Typer(
 )
 app.add_typer(bench_app, name="bench")
 
+mcp_app = typer.Typer(
+    name="mcp",
+    help="MCP server commands — expose Skopus context to MCP-capable agents.",
+    no_args_is_help=True,
+)
+app.add_typer(mcp_app, name="mcp")
+
+
+@mcp_app.command("serve")
+def mcp_serve() -> None:
+    """Run the Skopus MCP server over stdio.
+
+    Intended to be invoked by an agent's MCP runtime, not interactively.
+    The server speaks the Model Context Protocol over stdin/stdout.
+    """
+    from skopus.mcp import build_server
+
+    server = build_server()
+    server.run(transport="stdio")
+
 
 @bench_app.command("list")
 def bench_list() -> None:
@@ -773,15 +928,123 @@ def charter_evolve(
         console.print("[yellow]⚠[/yellow] Nothing to commit (charter unchanged).")
 
 
+def _check_mcp_status(adapter_name: str, home: Path) -> str:
+    """Return human-readable MCP install status for the given adapter.
+
+    Returns one of: 'installed', 'not_installed', 'config-unparseable',
+    'n/a (no MCP installer)'.
+    """
+    if adapter_name == "claude-code":
+        cfg_path = home / ".claude" / "settings.json"
+    elif adapter_name == "cline":
+        cfg_path = home / ".config" / "cline" / "cline_mcp_settings.json"
+    elif adapter_name == "cursor":
+        cfg_path = home / ".cursor" / "mcp.json"
+    else:
+        return "n/a (no MCP installer)"
+
+    if not cfg_path.is_file():
+        return "not_installed"
+    try:
+        cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return "config-unparseable"
+    if not isinstance(cfg, dict):
+        return "config-unparseable"
+    if "skopus" in cfg.get("mcpServers", {}):
+        return "installed"
+    return "not_installed"
+
+
+def _doctor_agent(name: str) -> None:
+    """Per-adapter introspection for `skopus doctor --agent <name>`."""
+    try:
+        adapter = get_adapter(name)
+    except KeyError:
+        console.print(f"[red]✗[/red] Unknown adapter: [bold]{name}[/bold]")
+        console.print(f"[dim]Known adapters: {', '.join(sorted(ADAPTERS))}[/dim]")
+        raise typer.Exit(code=1) from None
+
+    detected = adapter.detect()
+    project_status = adapter.status(project_path=Path.cwd())
+
+    table = Table(title=f"Adapter: {adapter.display_name} ({adapter.name})")
+    table.add_column("Property", style="bold")
+    table.add_column("Value")
+    table.add_column("Evidence", style="dim")
+
+    tier_color = {
+        AdapterTier.ADVERTISED: "green",
+        AdapterTier.EXPERIMENTAL: "yellow",
+        AdapterTier.UNVERIFIED: "red",
+    }[adapter.tier]
+    table.add_row(
+        "Tier",
+        f"[{tier_color}]{adapter.tier.value}[/{tier_color}]",
+        "smoke-tested file-side contract"
+        if adapter.tier is AdapterTier.ADVERTISED
+        else "no smoke-test guarantee",
+    )
+    table.add_row(
+        "Platform detected",
+        "[green]yes[/green]" if detected else "[yellow]no[/yellow]",
+        f"detect() = {detected}",
+    )
+    table.add_row(
+        "Project status",
+        f"[cyan]{project_status.value}[/cyan]",
+        f"checked at {Path.cwd()}",
+    )
+    mcp_status = _check_mcp_status(adapter.name, Path.home())
+    if mcp_status == "installed":
+        mcp_color = "green"
+    elif mcp_status == "not_installed":
+        mcp_color = "yellow"
+    elif mcp_status.startswith("n/a"):
+        mcp_color = "dim"
+    else:
+        mcp_color = "red"
+    table.add_row(
+        "MCP installed",
+        f"[{mcp_color}]{mcp_status}[/{mcp_color}]",
+        f"checked {adapter.name}'s MCP config",
+    )
+    console.print(table)
+
+    if adapter.tier is not AdapterTier.ADVERTISED:
+        console.print(
+            "[yellow]⚠[/yellow] This adapter is not on the v0.7.0 advertised list. "
+            "Marketing claims of support require a smoke test passing."
+        )
+
+
 @app.command()
-def doctor() -> None:
-    """Health check the Skopus installation — charter, memory, vault, linked projects."""
+def doctor(
+    agent: str | None = typer.Option(
+        None,
+        "--agent",
+        help=(
+            "If set, report integration state for one specific adapter "
+            "(e.g. claude-code, cursor, agents-md)."
+        ),
+    ),
+) -> None:
+    """Health check the Skopus installation — charter, memory, vault, linked projects.
+
+    With --agent <name>, report the per-adapter integration state with evidence:
+    tier (advertised / experimental / unverified), detect() result, and project
+    install status when run inside a project directory.
+    """
     skopus_dir = resolve_skopus_path()
     if not skopus_dir.exists():
         console.print(
             "[red]✗[/red] Skopus is not initialized. Run [italic]skopus init[/italic] first."
         )
         raise typer.Exit(code=1)
+
+    if agent is not None:
+        _doctor_agent(agent)
+        return
 
     table = Table(title="Skopus Health Check", show_lines=False)
     table.add_column("Component", style="bold")

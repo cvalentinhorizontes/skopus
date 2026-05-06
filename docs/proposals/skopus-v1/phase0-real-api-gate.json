@@ -1,0 +1,13 @@
+{
+  "measured_at": "2026-05-05T11:20:03",
+  "pre_slim_ref": "77c2d94^",
+  "pre_slim_result_file": "/home/dev-carlos/skopus/bench/results/pre-slim-skopus-bench-20260505-105222.json",
+  "thin_block_result_file": "/home/dev-carlos/skopus/bench/results/skopus-bench-20260505-112003.json",
+  "pre_slim_full_skopus_accuracy": 0.5417,
+  "thin_block_full_skopus_accuracy": 0.5583,
+  "ratio": 1.0306442680450434,
+  "threshold": 0.95,
+  "passed": true,
+  "limit": null,
+  "lens": "full"
+}

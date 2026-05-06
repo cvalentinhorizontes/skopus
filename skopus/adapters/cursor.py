@@ -16,6 +16,7 @@ from skopus.adapters.base import (
     Adapter,
     AdapterInstallResult,
     AdapterStatus,
+    AdapterTier,
     build_skopus_block,
 )
 from skopus.commands import load_command_templates, write_skill_md
@@ -28,6 +29,7 @@ class CursorAdapter(Adapter):
 
     name = "cursor"
     display_name = "Cursor"
+    tier = AdapterTier.ADVERTISED
 
     def detect(self) -> bool:
         """Cursor stores per-project rules in .cursor/ and may have a binary."""

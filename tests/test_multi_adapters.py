@@ -27,9 +27,10 @@ from skopus.adapters.base import (
 
 
 def test_registry_has_all_expected_adapters():
-    """v0.0.3 registry must include all 6 adapters + aliases."""
+    """v0.7.0 registry: 6 platform adapters + AGENTS.md universal fallback + aliases."""
     assert "claude-code" in ADAPTERS
     assert "cursor" in ADAPTERS
+    assert "agents-md" in ADAPTERS  # universal fallback (v0.7.0)
     assert "codex" in ADAPTERS
     assert "aider" in ADAPTERS
     assert "gemini-cli" in ADAPTERS
@@ -42,6 +43,13 @@ def test_registry_aliases_resolve():
     assert isinstance(gemini, GeminiCliAdapter)
     copilot = get_adapter("copilot")
     assert isinstance(copilot, CopilotCliAdapter)
+
+
+def test_agents_alias_resolves():
+    """v0.7.0: 'agents' is the natural shorthand for 'agents-md'."""
+    from skopus.adapters import AgentsMdAdapter, get_adapter
+
+    assert isinstance(get_adapter("agents"), AgentsMdAdapter)
 
 
 def test_get_adapter_normalizes_spaces():
@@ -147,7 +155,8 @@ def test_markdown_adapter_writes_correct_file(tmp_path, adapter_cls, file_name):
 
 
 def test_skopus_block_is_slim_pointer_block(tmp_path):
-    """Phase 0: adapter files must not inline full Skopus memory."""
+    """Phase 0 lock-in: adapter files must not inline full Skopus memory,
+    AND must stay under hard size caps that prevent silent re-bloat."""
     skopus_dir = tmp_path / ".skopus"
     charter = skopus_dir / "charter"
     memory = skopus_dir / "memory"
@@ -165,13 +174,61 @@ def test_skopus_block_is_slim_pointer_block(tmp_path):
 
     block = build_skopus_block(charter, vault, project_path=project)
 
+    # Behavior: must NOT inline source files (already covered, kept).
     assert "UNIQUE_CHARTER_CONTENT" not in block
     assert "UNIQUE_PROFILE_CONTENT" not in block
     assert "UNIQUE_MEMORY_CONTENT" not in block
+
+    # Behavior: must include canonical pointers.
     assert str(charter / "CLAUDE.md") in block
     assert str(memory / "MEMORY.md") in block
     assert str(vault) in block
-    assert len(block.splitlines()) <= 35
+
+    # Lock-in: hard size caps. Tighter than the v2 gate (<= 50% of pre-slim
+    # ~3K tokens = 1500 tokens) -- current production block is ~266 tokens,
+    # so the cap leaves ~3x headroom for path-length variance and never
+    # admits silent re-bloat. Re-evaluate ceiling at /charter-evolve when
+    # path schemas change.
+    assert len(block.splitlines()) <= 35, (
+        f"slim block grew to {len(block.splitlines())} lines; cap is 35. "
+        "If the schema legitimately needed more, raise the cap explicitly."
+    )
+    assert len(block) <= 2000, f"slim block grew to {len(block)} chars; cap is 2000."
+    # Conservative token estimate: chars/4 (English avg). Real tokenization
+    # is model-specific; this is a regression tripwire, not a billing oracle.
+    approx_tokens = len(block) // 4
+    assert approx_tokens <= 600, (
+        f"slim block grew to ~{approx_tokens} tokens (chars/4); cap is 600."
+    )
+
+    # Lock-in: must contain protocol header + Local Context section
+    # (the structural contract for what an agent expects).
+    assert "## Skopus Context" in block
+    assert "### Protocol" in block
+    assert "### Local Context" in block
+
+
+def test_slim_block_render_is_deterministic_within_one_day(tmp_path):
+    """Phase 0 lock-in: two renders of the same inputs on the same day must
+    be byte-for-byte identical. The block embeds today's date as `*Wired:
+    YYYY-MM-DD*` — that's the ONLY non-deterministic field. Anything else
+    drifting between renders means a hidden source of state and breaks
+    idempotent install."""
+    skopus_dir = tmp_path / ".skopus"
+    charter = skopus_dir / "charter"
+    vault = skopus_dir / "vault"
+    project = tmp_path / "project"
+    charter.mkdir(parents=True)
+    vault.mkdir(parents=True)
+    project.mkdir()
+
+    first = build_skopus_block(charter, vault, project_path=project)
+    second = build_skopus_block(charter, vault, project_path=project)
+
+    assert first == second, (
+        "two renders of the same inputs diverged. The slim block must be "
+        "deterministic so MarkdownAdapter.install() is truly idempotent."
+    )
 
 
 @pytest.mark.parametrize(

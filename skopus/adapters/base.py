@@ -29,6 +29,25 @@ class AdapterStatus(str, Enum):
     BROKEN = "broken"  # wiring corrupt, needs reinstall
 
 
+class AdapterTier(str, Enum):
+    """Honesty surface for which adapters Skopus advertises as smoke-tested.
+
+    ADVERTISED: file-side contract is verified by smoke tests under `tests/`.
+    The agent platform is documented as supported; doctor reports
+    installed/partial/broken with evidence.
+
+    EXPERIMENTAL: install/uninstall/status work, but no smoke test asserts
+    the file-side contract. Doctor reports best-effort status only.
+
+    UNVERIFIED: default for new adapters until they earn ADVERTISED. Marketing
+    copy MUST NOT claim support.
+    """
+
+    ADVERTISED = "advertised"
+    EXPERIMENTAL = "experimental"
+    UNVERIFIED = "unverified"
+
+
 @dataclass
 class AdapterInstallResult:
     """Result of calling `install()` on an adapter."""
@@ -44,6 +63,7 @@ class Adapter(ABC):
 
     name: str = "abstract"
     display_name: str = "Abstract Adapter"
+    tier: AdapterTier = AdapterTier.UNVERIFIED  # opt-in to ADVERTISED via subclass
 
     @abstractmethod
     def detect(self) -> bool:
@@ -149,6 +169,9 @@ Managed by Skopus; edit outside these markers or run `skopus unlink`.
 - For non-trivial code, design, debug, review, research, dependency, security,
   billing, or migration work, check relevant Skopus context before acting.
 - Read the narrowest relevant file listed below; do not load everything.
+- If your runtime supports MCP and Skopus's MCP server is wired, prefer the
+  `skopus_*` tools (search_memory, query_vault, get_charter_section) over
+  reading files — they return only what the query needs.
 - When the user corrects a durable behavior, preserve it through
   `/charter-evolve` at session end.
 

@@ -51,16 +51,19 @@ No re-teaching. No copy-pasting context. No drift.
 
 Skopus's adapter layer detects the agents installed on your machine and wires the right surface for each:
 
-| Agent | Context file | Slash commands surface |
-|---|---|---|
-| **Claude Code** | `.claude/CLAUDE.md` | `~/.claude/commands/*.md` |
-| **Cursor** | `.cursor/rules/skopus.mdc` | `~/.cursor/skills/<name>/SKILL.md` |
-| **Codex CLI** (OpenAI) | `AGENTS.md` | `$CODEX_HOME/skills/<name>/SKILL.md` |
-| **Gemini CLI** (Google) | `GEMINI.md` | `~/.gemini/commands/<name>.toml` |
-| **Aider** | `AGENTS.md` | (no surface — falls back to context file) |
-| **GitHub Copilot CLI** | `AGENTS.md` | (no surface — falls back to context file) |
+> Tier indicates Skopus's smoke-test coverage: `advertised` adapters have a passing file-side smoke suite; `experimental` adapters install and run but don't yet have one. See [`docs/proposals/skopus-v1/phase1-gate.md`](docs/proposals/skopus-v1/phase1-gate.md).
 
-> **Why six adapters?** Because your team uses Cursor and your CI uses Aider and your weekend project uses Codex. Skopus stays the same; the adapter layer handles the rest.
+| Agent | Context file | Slash commands surface | Tier |
+|---|---|---|---|
+| **Claude Code** | `.claude/CLAUDE.md` | `~/.claude/commands/*.md` | **advertised** |
+| **Cursor** | `.cursor/rules/skopus.mdc` | `~/.cursor/skills/<name>/SKILL.md` | **advertised** |
+| **AGENTS.md** (universal fallback) | `AGENTS.md` | (no surface — falls back to context file) | **advertised** |
+| **Codex CLI** (OpenAI) | `AGENTS.md` | `$CODEX_HOME/skills/<name>/SKILL.md` | experimental |
+| **Gemini CLI** (Google) | `GEMINI.md` | `~/.gemini/commands/<name>.toml` | experimental |
+| **Aider** | `AGENTS.md` | (no surface — falls back to context file) | experimental |
+| **GitHub Copilot CLI** | `AGENTS.md` | (no surface — falls back to context file) | experimental |
+
+> **Why so many adapters?** Because your team uses Cursor and your CI uses Aider and your weekend project uses Codex. Skopus stays the same; the adapter layer handles the rest.
 
 ---
 
@@ -183,15 +186,18 @@ Skopus is built around **slash commands inside the agent** + **CLI for file oper
 ### From the shell
 
 ```bash
-skopus init              # one-time: wizard + scaffold + link current project
-skopus link [path]       # wire a different project into Skopus
-skopus unlink [path]     # remove the wiring
-skopus update            # refresh per-agent surfaces + re-link tracked projects
-skopus self-upgrade      # bump the package version (detects pipx / pip / editable)
-skopus doctor            # health check
-skopus version           # show version + how to upgrade for your install method
-skopus audit             # memory health (index sync, scope tags)
-skopus bench run cp      # run the Correction-Persistence benchmark
+skopus init                       # one-time: wizard + scaffold + link current project
+skopus link [path]                # wire a different project into Skopus
+skopus link --mcp <agent>         # wire `skopus mcp serve` into the agent's MCP config
+skopus unlink [path]              # remove the wiring
+skopus update                     # refresh per-agent surfaces + re-link tracked projects
+skopus self-upgrade               # bump the package version (detects pipx / pip / editable)
+skopus doctor                     # health check
+skopus doctor --agent <name>      # per-adapter status: tier + detect + project + MCP install
+skopus mcp serve                  # run the stdio MCP server (called by agents, not humans)
+skopus version                    # show version + how to upgrade for your install method
+skopus audit                      # memory health (index sync, scope tags)
+skopus bench run cp               # run the Correction-Persistence benchmark
 ```
 
 `skopus self-upgrade` is install-method-aware. It detects whether you installed via pipx, pip, or editable (`pip install -e .`) and runs the right upgrade command — never clobbers an editable tree, surfaces PEP-668 errors with a pipx hint.
@@ -237,7 +243,7 @@ A skopos is the lookout on a mast. Skopus does the same job for your agent: it w
 
 ## Roadmap
 
-Status: **alpha (v0.5.0)**. Production-ready for individual developers; teams welcome but expect rough edges.
+Status: **alpha (v0.8.0)**. Production-ready for individual developers; teams welcome but expect rough edges.
 
 **Shipped:**
 
@@ -247,10 +253,16 @@ Status: **alpha (v0.5.0)**. Production-ready for individual developers; teams we
 - ✅ `skopus self-upgrade` — install-method-aware
 - ✅ Correction-Persistence benchmark + LongMemEval + LoCoMo adapters
 - ✅ Pre-Phase-0 wiring migration so old installs auto-clean
+- ✅ Tier-aware adapter registry — honest about which adapters are smoke-tested
+- ✅ `AGENTS.md` universal-fallback adapter — Linux Foundation cross-agent standard
+- ✅ Skopus MCP server — `skopus_status`, `skopus_search_memory`, `skopus_query_vault`, `skopus_get_charter_section`, `skopus_record_drift` over stdio
+- ✅ Per-agent MCP installers — Claude Code, Cline, Cursor (`skopus link --mcp <agent>`)
+- ✅ Doctor MCP-visibility row — `skopus doctor --agent <name>` reports MCP install status
 
 **On the roadmap:**
 
-- ⏳ Skopus MCP server — `skopus_search_memory`, `skopus_query_vault`, `skopus_record_drift`
+- ⏳ Conservative learning loop in `/charter-evolve` (trigger gaps + confidence-tiered promotion)
+- ⏳ Sub-harness format + Secretary routing
 - ⏳ Team-shared vault sync (multi-developer charter merging)
 - ⏳ More benchmark adapters (MSC, RULER)
 - ⏳ Web dashboard for vault browsing
