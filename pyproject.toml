@@ -51,6 +51,11 @@ dependencies = [
     # MCP server for graph queries, PDF extraction, file-watcher for auto-rebuild.
     # This is ~200-300MB but it's the full four-lens experience out of the box.
     "graphifyy[mcp,pdf,watch,leiden]>=0.1",
+    # TOML I/O for the Codex MCP installer (~/.codex/config.toml).
+    # Stdlib `tomllib` reads TOML on 3.11+; `tomli` is the backport for 3.10.
+    # `tomli_w` writes TOML on all versions (no stdlib equivalent in any).
+    "tomli>=2.0; python_version < '3.11'",
+    "tomli_w>=1.0",
 ]
 
 [project.optional-dependencies]

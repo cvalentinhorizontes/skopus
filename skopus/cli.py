@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from pathlib import Path
 
 import typer
@@ -509,7 +510,7 @@ def init(
         console.print("[bold cyan]Next:[/bold cyan] [italic]cd my-project && skopus link[/italic]")
     console.print(
         "[dim]Tip: wire the MCP server into your agent with "
-        "[italic]skopus link --mcp claude-code[/italic] (or cline / cursor) "
+        "[italic]skopus link --mcp claude-code[/italic] (or cline / cursor / codex) "
         "so Skopus tools are queryable on demand.[/dim]"
     )
 
@@ -518,11 +519,13 @@ def _link_mcp(name: str) -> None:
     """Dispatch `skopus link --mcp <name>` to the right MCP installer."""
     from skopus.mcp.installers.claude_code import install_claude_code_mcp
     from skopus.mcp.installers.cline import install_cline_mcp
+    from skopus.mcp.installers.codex import install_codex_mcp
     from skopus.mcp.installers.cursor import install_cursor_mcp
 
     installers = {
         "claude-code": install_claude_code_mcp,
         "cline": install_cline_mcp,
+        "codex": install_codex_mcp,
         "cursor": install_cursor_mcp,
     }
 
@@ -558,7 +561,7 @@ def link(
         None,
         "--mcp",
         help="Wire `skopus mcp serve` into the named agent's MCP config "
-        "(claude-code, cline, cursor). Skips the legacy adapter wiring.",
+        "(claude-code, cline, cursor, codex). Skips the legacy adapter wiring.",
     ),
 ) -> None:
     """Wire Skopus into a project's CLAUDE.md.
@@ -934,24 +937,48 @@ def _check_mcp_status(adapter_name: str, home: Path) -> str:
     Returns one of: 'installed', 'not_installed', 'config-unparseable',
     'n/a (no MCP installer)'.
     """
+    # Per-adapter (config_path, format, servers_key). Codex uses TOML and
+    # snake_case `mcp_servers`; the others use JSON and camelCase `mcpServers`.
     if adapter_name == "claude-code":
         cfg_path = home / ".claude" / "settings.json"
+        fmt, servers_key = "json", "mcpServers"
     elif adapter_name == "cline":
         cfg_path = home / ".config" / "cline" / "cline_mcp_settings.json"
+        fmt, servers_key = "json", "mcpServers"
     elif adapter_name == "cursor":
         cfg_path = home / ".cursor" / "mcp.json"
+        fmt, servers_key = "json", "mcpServers"
+    elif adapter_name == "codex":
+        cfg_path = home / ".codex" / "config.toml"
+        fmt, servers_key = "toml", "mcp_servers"
     else:
         return "n/a (no MCP installer)"
 
     if not cfg_path.is_file():
         return "not_installed"
     try:
-        cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+        text = cfg_path.read_text(encoding="utf-8")
+    except OSError:
         return "config-unparseable"
+
+    if fmt == "json":
+        try:
+            cfg = json.loads(text)
+        except json.JSONDecodeError:
+            return "config-unparseable"
+    else:  # toml
+        if sys.version_info >= (3, 11):
+            import tomllib
+        else:  # pragma: no cover - exercised on 3.10 CI matrix only
+            import tomli as tomllib
+        try:
+            cfg = tomllib.loads(text)
+        except tomllib.TOMLDecodeError:
+            return "config-unparseable"
+
     if not isinstance(cfg, dict):
         return "config-unparseable"
-    if "skopus" in cfg.get("mcpServers", {}):
+    if "skopus" in cfg.get(servers_key, {}):
         return "installed"
     return "not_installed"
 
